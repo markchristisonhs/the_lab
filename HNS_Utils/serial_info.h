@@ -1,0 +1,22 @@
+#ifndef SERIAL_INFO_H
+#define SERIAL_INFO_H
+
+enum
+{
+    HNS_ERR_SER_NOERR = 0,
+    HNS_ERR_SER_NOFILE,
+    HNS_ERR_SER_NOPERM,
+    HNS_ERR_SER_NOATTR,
+    HNS_ERR_SER_ATTRWR,
+    HNS_ERR_SER_READERR,
+    HNS_ERR_SER_ALREADY_OPEN,
+    HNS_ERR_SER_NOT_OPENED
+};
+
+typedef enum
+{
+    HNS_SER_BAUD9600 = 0,
+    HNS_SER_BAUD115200
+} type_hns_baud_rate;
+
+#endif // SERIAL_INFO_H

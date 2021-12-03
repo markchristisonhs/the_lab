@@ -1,0 +1,4 @@
+#ifndef NTCIP_CONNECTION_H
+#define NTCIP_CONNECTION_H
+
+#endif // NTCIP_CONNECTION_H
