@@ -42,8 +42,3 @@ void HNS_LogALine::fLogALine(const std::string &line, const std::string &caller)
         f_out << datestring.c_str() << ":" << caller.c_str() << ": " << line.c_str() << endl;
     }
 }
-
-//HNS_LogALine2::~HNS_LogALine2()
-//{
-
-//}

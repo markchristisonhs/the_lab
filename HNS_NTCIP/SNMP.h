@@ -176,6 +176,7 @@ public:
     void fLogData(HNS_LogALine2 *logaline);
 private:
 
+    std::string fGetDataTypeAsString() const;
     type_snmp_data_types f_datatype;
     std::vector<unsigned char> f_data;
     //if the datatype is a sequence, then this stores the items in the sequence.  This may contain further sequences, but those can
@@ -219,6 +220,7 @@ private:
     int f_error_status;
     int f_error_index;
     std::vector<SNMP_Variable_Bindings> f_data;
+    std::string fGetPDUTypeAsString() const;
 };
 
 class SNMP_Variable_Bindings

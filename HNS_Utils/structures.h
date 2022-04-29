@@ -17,12 +17,18 @@ typedef enum
     HNS_COMM_DYNAMIC
 } type_comm_address;
 
+enum
+{
+    HNS_RADAR_NORMAL = 0,
+    HNS_VSL_OFFSET
+};
+
 class HNS_Radar_Police_Speed
 {
 public:
     HNS_Radar_Police_Speed();
 
-    HNS_Radar_Police_Speed(const int &minimum_speed, const int &violator_speed, const int &maximum_speed);
+    HNS_Radar_Police_Speed(const int &minimum_speed, const int &violator_speed, const int &maximum_speed, const int &speed_mode = HNS_RADAR_NORMAL);
 
     bool operator == (const HNS_Radar_Police_Speed &rhs) const;
     bool operator != (const HNS_Radar_Police_Speed &rhs) const;
@@ -34,9 +40,22 @@ public:
     int fGetMaximumSpeed();
     void fSetMaximumSpeed(const int &maximum_speed);
 
+    int fGetMinimumSpeedOffset() const;
+    int fGetViolatorSpeedOffset() const;
+    int fGetMaximumSpeedOffSet() const;
+    int fGetSpeedMode() const;
+
+    void fSetMinimumSpeedOffset(const int &offset);
+    void fSetViolatorSpeedOffset(const int &offset);
+    void fSetMaximumSpeedOffset(const int &offset);
+    void fSetSpeedMode(const int &mode);
+
     void fSetSpeed(const int &minimum_speed, const int &violator_speed, const int &maximum_speed);
 private:
     int f_minimum_speed,f_violator_speed,f_maximum_speed;
+    int f_minimum_speed_offset,f_violator_speed_offset,f_maximum_speed_offset;
+
+    int f_speed_mode;
 };
 
 class HNS_Radar_Strobe
@@ -46,19 +65,27 @@ public:
     void fSetStrobeSettings(const int &duration, const int &pattern, const int &speed);
     void fSetDuration(const int &duration);
     void fSetPattern(const int &pattern);
+    void fSetPatternUI(const int &pattern);
     void fSetSpeed(const int &speed);
     void fSetEnabled(const bool &enabled);
+    void fSetSpeedMode(const int &speed_mode);
+    void fSetSpeedOffset(const int &speed_offset);
 
     void fGetStrobeSettings(int &duration, int &pattern, int &speed) const;
     int fGetDuration() const;
     int fGetPattern() const;
+    int fGetPatternUI() const;
     int fGetSpeed() const;
     bool fIsEnabled() const;
+    int fGetSpeedMode() const {return f_speed_mode;}
+    int fGetSpeedOffset() const {return f_speed_offset;}
 private:
     int f_duration;
     int f_pattern;
     int f_speed;
+    int f_speed_offset;
     bool f_enabled;
+    int f_speed_mode;
 };
 
 class HNS_IP_Settings

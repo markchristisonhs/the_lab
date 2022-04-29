@@ -22,10 +22,31 @@ type_justification_line HNS_Message2::f_default_line_justification = HNS_JUSTIFI
 type_justification_page HNS_Message2::f_default_page_justification = HNS_JUSTIFICATION_PAGE_CENTER;
 double HNS_Message2::f_default_page_time_on = 2.0;
 double HNS_Message2::f_default_page_time_off = 0.0;
-double HNS_Message2::f_default_flash_time_on = 1.0;
-double HNS_Message2::f_default_flash_time_off = 1.0;
+unsigned int HNS_Message2::f_default_flash_time_on = 10;
+unsigned int HNS_Message2::f_default_flash_time_off = 10;
 int HNS_Message2::f_default_font = 1;
-HNS_SignBoard HNS_Message2::f_default_signboard;
+HNS_SignBoard_Info HNS_Message2::f_default_signboard_info;
+
+//Remember, time is 1000ths of a second, and flash_info stores in 10ths of a second
+bool IsFlashOn(const int64_t &time, const HNS_Flashing_Text &flash_info)
+{
+    bool isTextOn = false;
+
+    unsigned int flash_period = (flash_info.fGetFlashOn() + flash_info.fGetFlashOn()) * 100;
+
+    int64_t adjusted_time = time % flash_period;
+
+    if(flash_info.fGetOnFirst())
+    {
+        isTextOn = adjusted_time < (flash_info.fGetFlashOn() * 100);
+    }
+    else
+    {
+        isTextOn = adjusted_time >= (flash_info.fGetFlashOff() * 100);
+    }
+
+    return isTextOn;
+}
 
 enum
 {
@@ -106,35 +127,27 @@ bool HNS_Flashing_Text::fGetOnFirst() const
     return f_on_first;
 }
 
-HNS_Message2::HNS_Message2():
-    f_board_height(0),
-    f_board_width(0)
+HNS_Message2::HNS_Message2()
 {
 
 }
 
-HNS_Message2::HNS_Message2(const size_t &board_height, const size_t &board_width):
-    f_board_height(board_height),
-    f_board_width(board_width)
+HNS_Message2::HNS_Message2(const HNS_SignBoard_Info &)
 {
 
 }
 
-int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Font> *fonts, const std::vector<HNS_Graphic> *graphics, const HNS_Field_Data *field_data)
+int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Font> *fonts, const std::vector<HNS_Graphic> *graphics, const HNS_Field_Data *field_data, type_multi_syntax_error *multi_error, bool *too_tall)
 {
+    type_multi_syntax_error my_error = HNS_MULTI_SYNTAX_ERROR_NONE;
     int error = HNS_MULTI_PARSER_NO_ERROR;
-//    vector<HNS_Message_Page> temp_pages;
-//    HNS_Message_Page temp_page;
     int fsm_state = HNS_MULTI_PARSER_STATE_TEXT;
     string text;
     string temp_string;
     int itemp,itemp_x,itemp_y;
-    //int itemp_r,itemp_g,itemp_b,itemp_w,itemp_h;
     bool fail = false;
     //true is pm, false is am
     bool am_pm = false;
-//    HNS_Message_Element_Text *text_element = nullptr;
-//    HNS_Message_Element_Image *image_element = nullptr;
     int current_font = HNS_Message2::fGetDefaultFont();
     type_justification_line current_line_justification = HNS_Message2::fGetDefaultLineJustification();
     type_justification_page current_page_justification = HNS_Message2::fGetDefaultPageJustification();
@@ -155,10 +168,29 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
     stringstream ss;
     tm *current_time = nullptr;
 
+    bool temp_too_tall = false;
+    type_hns_signboard_error sign_brd_error = HNS_SGNBRD_ERROR_NONE;
+
+    if(fonts == nullptr)
+    {
+        fail = true;
+        error = HNS_MULTI_PARSER_SYNTAX_ERROR;
+        my_error = HNS_MULTI_SYNTAX_ERROR_FONTNOTDEFINED;
+    }
+    else
+    {
+        if((current_font < 0) || (static_cast<size_t>(current_font) > fonts->size()))
+        {
+            fail = true;
+            error = HNS_MULTI_PARSER_SYNTAX_ERROR;
+            my_error = HNS_MULTI_SYNTAX_ERROR_FONTNOTDEFINED;
+        }
+    }
+
     f_pages.clear();
 
     //there will always be one page, even if its blank
-    fAddPage(current_time_on,current_time_off, current_line_justification, current_page_justification);
+    fAddPage(current_time_on,current_time_off);
 
     for(string::iterator character = multi_string.begin(); character != multi_string.end() && !fail; ++character)
     {
@@ -171,7 +203,6 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
             }
             else if(*character == ']')
             {
-                //error = HNS_MULTI_PARSER_UNEXPECTED_CLOSING_BRACE;
                 fsm_state = HNS_MULTI_PARSER_STATE_CLOSING_CANDIDATE;
                 break;
             }
@@ -209,12 +240,14 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                             else
                             {
                                 error = HNS_MULTI_PARSER_SYNTAX_ERROR;
+                                my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                                 fail = true;
                             }
                         }
                         else
                         {
                             error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                            my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                             fail = true;
                         }
                     }
@@ -248,6 +281,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                         else
                         {
                             error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                            my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                             fail = true;
                         }
                     }
@@ -268,39 +302,32 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                             numbers = HNS_string_to_int_vector(temp_string,',',temp_error);
                             if(numbers.size() == 5)
                             {
-                                //itemp_x = numbers[0];
-                                //itemp_y = numbers[1];
-                                //itemp_w = numbers[2];
-                                //itemp_h = numbers[3];
                                 itemp = numbers[4];
                             }
                             if(numbers.size() == 7)
                             {
                                 itemp_x = numbers[0];
-//                                itemp_y = numbers[1];
-//                                itemp_w = numbers[2];
-//                                itemp_h = numbers[3];
-//                                itemp_r = numbers[4];
-//                                itemp_g = numbers[5];
-//                                itemp_b = numbers[6];
                             }
                             fsm_state = HNS_MULTI_PARSER_STATE_TEXT;
                         }
                         else
                         {
                             error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                            my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                             fail = true;
                         }
                     }
                     else
                     {
                         error = HNS_MULTI_PARSER_UNRECOGNIZED_TAG;
+                        my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                         fail = true;
                     }
                 }
                 else
                 {
                     error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                    my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                     fail = true;
                 }
                 break;
@@ -323,6 +350,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                         else
                         {
                             error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                            my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                             fail = true;
                         }
                         if(!fail)
@@ -352,32 +380,70 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                     //already existing text add it as an element to the page.
                                     if(!text.empty())
                                     {
-//                                        text_element = new HNS_Message_Element_Text();
-//                                        text_element->fSetText(text);
-//                                        text_element->fSetFont(current_font);
-//                                        temp_page.fAddElement(text_element);
-
                                         if(f_pages.size() == 0)
                                         {
                                             //this is actually the first page.
-                                            fAddPage(current_time_on,current_time_off, current_line_justification, current_page_justification);
+                                            fAddPage(current_time_on,current_time_off);
                                         }
                                         temp_element = HNS_Message_Element2(text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
-                                        fAddElementToPage(temp_element, current_line_justification, current_page_justification);
+                                        sign_brd_error = fAddElementToPage(temp_element, current_line_justification, current_page_justification);
                                         text = "";
+                                        if(sign_brd_error != HNS_SGNBRD_ERROR_NONE)
+                                        {
+                                            if(sign_brd_error == HNS_SGNBRD_ERROR_TOOTALL || sign_brd_error == HNS_SGNBRD_ERROR_TOOWIDE)
+                                            {
+                                                if(sign_brd_error == HNS_SGNBRD_ERROR_TOOTALL)
+                                                {
+                                                    temp_too_tall = true;
+                                                }
+                                                error = HNS_MULTI_PARSER_SYNTAX_ERROR;
+                                                my_error = HNS_MULTI_SYNTAX_ERROR_TEXTTOOBIG;
+                                                fail = true;
+                                            }
+                                        }
                                     }
 
                                     numbers = HNS_string_to_int_vector(temp_string,',',temp_error);
                                     if(on_first_temp)
                                     {
-                                        current_flash_info.fFlashOn() = numbers[0];
-                                        current_flash_info.fFlashOff() = numbers[1];
+                                        if(numbers.size() > 0)
+                                        {
+                                            current_flash_info.fFlashOn() = numbers[0];
+                                        }
+                                        else
+                                        {
+                                            current_flash_info.fFlashOn() = f_default_flash_time_on;
+                                        }
+
+                                        if(numbers.size() > 1)
+                                        {
+                                            current_flash_info.fFlashOff() = numbers[1];
+                                        }
+                                        else
+                                        {
+                                            current_flash_info.fFlashOff() = f_default_flash_time_off;
+                                        }
                                         current_flash_info.fSetOnFirst(true);
                                     }
                                     else
                                     {
-                                        current_flash_info.fFlashOn() = numbers[1];
-                                        current_flash_info.fFlashOff() = numbers[0];
+                                        if(numbers.size() > 1)
+                                        {
+                                            current_flash_info.fFlashOn() = numbers[1];
+                                        }
+                                        else
+                                        {
+                                            current_flash_info.fFlashOn() = f_default_flash_time_on;
+                                        }
+
+                                        if(numbers.size() > 0)
+                                        {
+                                            current_flash_info.fFlashOff() = numbers[0];
+                                        }
+                                        else
+                                        {
+                                            current_flash_info.fFlashOff() = f_default_flash_time_off;
+                                        }
                                         current_flash_info.fSetOnFirst(false);
                                     }
                                     flash_enabled = true;
@@ -386,12 +452,14 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                 else
                                 {
                                     error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                                    my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                                     fail = true;
                                 }
                             }
                             else
                             {
                                 error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                                my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                                 fail = true;
                             }
                         }
@@ -416,22 +484,40 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                 //already existing text at another font, add it as an element to the page.
                                 if(!text.empty())
                                 {
-//                                    text_element = new HNS_Message_Element_Text();
-//                                    text_element->fSetText(text);
-//                                    text_element->fSetFont(current_font);
-//                                    temp_page.fAddElement(text_element);
-
                                     if(f_pages.size() == 0)
                                     {
                                         //this is actually the first page.
-                                        fAddPage(current_time_on,current_time_off, current_line_justification, current_page_justification);
+                                        fAddPage(current_time_on,current_time_off);
                                     }
                                     temp_element = HNS_Message_Element2(text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info, char_spacing);
-                                    fAddElementToPage(temp_element, current_line_justification, current_page_justification);
+                                    sign_brd_error = fAddElementToPage(temp_element, current_line_justification, current_page_justification);
 
                                     text = "";
+
+                                    if(sign_brd_error != HNS_SGNBRD_ERROR_NONE)
+                                    {
+                                        if(sign_brd_error == HNS_SGNBRD_ERROR_TOOTALL || sign_brd_error == HNS_SGNBRD_ERROR_TOOWIDE)
+                                        {
+                                            if(sign_brd_error == HNS_SGNBRD_ERROR_TOOTALL)
+                                            {
+                                                temp_too_tall = true;
+                                            }
+                                            error = HNS_MULTI_PARSER_SYNTAX_ERROR;
+                                            my_error = HNS_MULTI_SYNTAX_ERROR_TEXTTOOBIG;
+                                            fail = true;
+                                        }
+                                    }
                                 }
-                                current_font = numbers[0];
+                                if((numbers[0] < 0) || (static_cast<size_t>(numbers[0]) > fonts->size()))
+                                {
+                                    fail = true;
+                                    error = HNS_MULTI_PARSER_SYNTAX_ERROR;
+                                    my_error = HNS_MULTI_SYNTAX_ERROR_FONTNOTDEFINED;
+                                }
+                                else
+                                {
+                                    current_font = numbers[0];
+                                }
                                 fsm_state = HNS_MULTI_PARSER_STATE_TEXT;
                             }
                             else if(numbers.size() == 2)
@@ -439,33 +525,52 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                 //already existing text at another font, add it as an element to the page.
                                 if(!text.empty())
                                 {
-//                                    text_element = new HNS_Message_Element_Text();
-//                                    text_element->fSetText(text);
-//                                    text_element->fSetFont(current_font);
-//                                    temp_page.fAddElement(text_element);
-
                                     if(f_pages.size() == 0)
                                     {
                                         //this is actually the first page.
-                                        fAddPage(current_time_on,current_time_off, current_line_justification, current_page_justification);
+                                        fAddPage(current_time_on,current_time_off);
                                     }
                                     temp_element = HNS_Message_Element2(text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info, char_spacing);
-                                    fAddElementToPage(temp_element, current_line_justification, current_page_justification);
+                                    sign_brd_error = fAddElementToPage(temp_element, current_line_justification, current_page_justification);
 
                                     text = "";
+                                    if(sign_brd_error != HNS_SGNBRD_ERROR_NONE)
+                                    {
+                                        if(sign_brd_error == HNS_SGNBRD_ERROR_TOOTALL || sign_brd_error == HNS_SGNBRD_ERROR_TOOWIDE)
+                                        {
+                                            if(sign_brd_error == HNS_SGNBRD_ERROR_TOOTALL)
+                                            {
+                                                temp_too_tall = true;
+                                            }
+                                            error = HNS_MULTI_PARSER_SYNTAX_ERROR;
+                                            my_error = HNS_MULTI_SYNTAX_ERROR_TEXTTOOBIG;
+                                            fail = true;
+                                        }
+                                    }
                                 }
-                                current_font = numbers[0];
+                                if((numbers[0] < 0) || (static_cast<size_t>(numbers[0]) > fonts->size()))
+                                {
+                                    fail = true;
+                                    error = HNS_MULTI_PARSER_SYNTAX_ERROR;
+                                    my_error = HNS_MULTI_SYNTAX_ERROR_FONTNOTDEFINED;
+                                }
+                                else
+                                {
+                                    current_font = numbers[0];
+                                }
                                 fsm_state = HNS_MULTI_PARSER_STATE_TEXT;
                             }
                             else
                             {
                                 error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                                my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                                 fail = true;
                             }
                         }
                         else
                         {
                             error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                            my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                             fail = true;
                         }
                     }
@@ -760,28 +865,33 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                 default:
                                     break;
                                 }
+                                fsm_state = HNS_MULTI_PARSER_STATE_TEXT;
                             }
                             else
                             {
                                 error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                                my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                                 fail = true;
                             }
                         }
                         else
                         {
                             error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                            my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                             fail = true;
                         }
                     }
                     else
                     {
                         error = HNS_MULTI_PARSER_UNRECOGNIZED_TAG;
+                        my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                         fail = true;
                     }
                 }
                 else
                 {
                     error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                    my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                     fail = true;
                 }
                 break;
@@ -802,6 +912,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                     if(numbers.size() == 0 || numbers.size() == 2 || numbers.size() > 4)
                     {
                         error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                        my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                         fail = true;
                     }
 
@@ -810,35 +921,45 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                         //already existing text add it as an element to the page.
                         if(!text.empty())
                         {
-//                            text_element = new HNS_Message_Element_Text();
-//                            text_element->fSetText(text);
-//                            text_element->fSetFont(current_font);
-//                            temp_page.fAddElement(text_element);
-
                             if(f_pages.size() == 0)
                             {
                                 //this is actually the first page.
-                                fAddPage(current_time_on,current_time_off, current_line_justification, current_page_justification);
+                                fAddPage(current_time_on,current_time_off);
                             }
                             temp_element = HNS_Message_Element2(text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
-                            fAddElementToPage(temp_element, current_line_justification, current_page_justification);
+                            sign_brd_error = fAddElementToPage(temp_element, current_line_justification, current_page_justification);
                             text = "";
+
+                            if(sign_brd_error != HNS_SGNBRD_ERROR_NONE)
+                            {
+                                if(sign_brd_error == HNS_SGNBRD_ERROR_TOOTALL || sign_brd_error == HNS_SGNBRD_ERROR_TOOWIDE)
+                                {
+                                    if(sign_brd_error == HNS_SGNBRD_ERROR_TOOTALL)
+                                    {
+                                        temp_too_tall = true;
+                                    }
+                                    error = HNS_MULTI_PARSER_SYNTAX_ERROR;
+                                    my_error = HNS_MULTI_SYNTAX_ERROR_TEXTTOOBIG;
+                                    fail = true;
+                                }
+                            }
                         }
-//                        image_element = new HNS_Message_Element_Image();
-//                        image_element->fSetImageIndex(numbers[0]);
-//                        temp_page.fAddElement(image_element);
 
                         index = -1;
-                        for(size_t i=0;i<graphics->size();i++)
+                        if(graphics != nullptr)
                         {
-                            if(graphics->at(i).fGetGraphicNumber() == numbers[0])
+                            for(size_t i=0;i<graphics->size();i++)
                             {
-                                index = i;
+                                if(graphics->at(i).fGetGraphicNumber() == numbers[0])
+                                {
+                                    index = i;
+                                }
                             }
                         }
                         if(index == -1)
                         {
                             error = HNS_MULTI_PARSER_UNDEFINED_GRAPHIC;
+                            my_error = HNS_MULTI_SYNTAX_ERROR_GRAPHICNOTDEFINED;
                             fail = true;
                         }
                         else
@@ -854,10 +975,24 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                             if(f_pages.size() == 0)
                             {
                                 //this is actually the first page.
-                                fAddPage(current_time_on,current_time_off, current_line_justification, current_page_justification);
+                                fAddPage(current_time_on,current_time_off);
                             }
                             temp_element = HNS_Message_Element2(itemp_x,itemp_y,graphics->at(index).fGetBitmap().fGetHeight(),graphics->at(index).fGetBitmap().fGetWidth(),numbers[0],flash_enabled,current_flash_info);
-                            fAddElementToPage(temp_element, current_line_justification, current_page_justification);
+                            sign_brd_error = fAddElementToPage(temp_element, current_line_justification, current_page_justification);
+
+                            if(sign_brd_error != HNS_SGNBRD_ERROR_NONE)
+                            {
+                                if(sign_brd_error == HNS_SGNBRD_ERROR_TOOTALL || sign_brd_error == HNS_SGNBRD_ERROR_TOOWIDE)
+                                {
+                                    if(sign_brd_error == HNS_SGNBRD_ERROR_TOOTALL)
+                                    {
+                                        temp_too_tall = true;
+                                    }
+                                    error = HNS_MULTI_PARSER_SYNTAX_ERROR;
+                                    my_error = HNS_MULTI_SYNTAX_ERROR_TEXTTOOBIG;
+                                    fail = true;
+                                }
+                            }
                         }
 
                         fsm_state = HNS_MULTI_PARSER_STATE_TEXT;
@@ -898,6 +1033,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                     else
                     {
                         error = HNS_MULTI_PARSER_UNRECOGNIZED_TAG;
+                        my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                         fail = true;
                     }
                 }
@@ -928,11 +1064,24 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                     if(f_pages.size() == 0)
                                     {
                                         //this is actually the first page.
-                                        fAddPage(current_time_on,current_time_off, current_line_justification, current_page_justification);
+                                        fAddPage(current_time_on,current_time_off);
                                     }
                                     temp_element = HNS_Message_Element2(text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
-                                    fAddElementToPage(temp_element, current_line_justification, current_page_justification);
+                                    sign_brd_error = fAddElementToPage(temp_element, current_line_justification, current_page_justification);
                                     text = "";
+                                    if(sign_brd_error != HNS_SGNBRD_ERROR_NONE)
+                                    {
+                                        if(sign_brd_error == HNS_SGNBRD_ERROR_TOOTALL || sign_brd_error == HNS_SGNBRD_ERROR_TOOWIDE)
+                                        {
+                                            if(sign_brd_error == HNS_SGNBRD_ERROR_TOOTALL)
+                                            {
+                                                temp_too_tall = true;
+                                            }
+                                            error = HNS_MULTI_PARSER_SYNTAX_ERROR;
+                                            my_error = HNS_MULTI_SYNTAX_ERROR_TEXTTOOBIG;
+                                            fail = true;
+                                        }
+                                    }
                                 }
 
                                 switch(numbers[0])
@@ -959,6 +1108,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                             else
                             {
                                 error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                                my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                                 fail = true;
                             }
                         }
@@ -985,7 +1135,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                     if(f_pages.size() == 0)
                                     {
                                         //this is actually the first page.
-                                        fAddPage(current_time_on,current_time_off, current_line_justification, current_page_justification);
+                                        fAddPage(current_time_on,current_time_off);
                                     }
                                     temp_element = HNS_Message_Element2(text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
                                     fAddElementToPage(temp_element, current_line_justification, current_page_justification);
@@ -1012,6 +1162,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                             else
                             {
                                 error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                                my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                                 fail = true;
                             }
                         }
@@ -1019,12 +1170,14 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                     else
                     {
                         error = HNS_MULTI_PARSER_UNRECOGNIZED_TAG;
+                        my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                         fail = true;
                     }
                 }
                 else
                 {
                     error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                    my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                     fail = true;
                 }
                 break;
@@ -1061,31 +1214,42 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                 {
                                     line_spacing = numbers[0];
                                 }
-//                                text_element = new HNS_Message_Element_Text();
-//                                text_element->fSetText(text);
-//                                text_element->fSetFont(current_font);
-//                                temp_page.fAddElement(text_element);
 
                                 if(f_pages.size() == 0)
                                 {
                                     //this is actually the first page.
-                                    fAddPage(current_time_on,current_time_off, current_line_justification, current_page_justification);
+                                    fAddPage(current_time_on,current_time_off);
                                 }
                                 temp_element = HNS_Message_Element2(text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
-                                fAddElementToPage(temp_element,current_line_justification, current_page_justification,true,line_spacing);
+                                sign_brd_error = fAddElementToPage(temp_element,current_line_justification, current_page_justification,true,line_spacing);
 
                                 text = "";
                                 fsm_state = HNS_MULTI_PARSER_STATE_TEXT;
+                                if(sign_brd_error != HNS_SGNBRD_ERROR_NONE)
+                                {
+                                    if(sign_brd_error == HNS_SGNBRD_ERROR_TOOTALL || sign_brd_error == HNS_SGNBRD_ERROR_TOOWIDE)
+                                    {
+                                        if(sign_brd_error == HNS_SGNBRD_ERROR_TOOTALL)
+                                        {
+                                            temp_too_tall = true;
+                                        }
+                                        error = HNS_MULTI_PARSER_SYNTAX_ERROR;
+                                        my_error = HNS_MULTI_SYNTAX_ERROR_TEXTTOOBIG;
+                                        fail = true;
+                                    }
+                                }
                             }
                             else
                             {
                                 error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                                my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                                 fail = true;
                             }
                         }
                         else
                         {
                             error = HNS_MULTI_PARSER_SYNTAX_ERROR;
+                            my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                             fail = true;
                         }
                     }
@@ -1100,42 +1264,48 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                 if(f_pages.size() == 0)
                                 {
                                     //this is actually the first page.
-                                    fAddPage(current_time_on,current_time_off, current_line_justification, current_page_justification);
+                                    fAddPage(current_time_on,current_time_off);
                                 }
                                 temp_element = HNS_Message_Element2(text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
-                                fAddElementToPage(temp_element, current_line_justification, current_page_justification);
+                                sign_brd_error = fAddElementToPage(temp_element, current_line_justification, current_page_justification);
                             }
                             text = "";
-//                            text_element = new HNS_Message_Element_Text();
-//                            text_element->fSetText(text);
-//                            text_element->fSetFont(current_font);
-//                            temp_page.fAddElement(text_element);
-//                            temp_page.fSetPageTime(current_time_on, current_time_off);
-//                            temp_page.fSetLineJustification(current_line_justification);
-//                            temp_page.fSetPageJustification(current_page_justification);
-//                            temp_pages.push_back(temp_page);
-//                            text = "";
-//                            temp_page.fClear();
+                            if(sign_brd_error != HNS_SGNBRD_ERROR_NONE)
+                            {
+                                if(sign_brd_error == HNS_SGNBRD_ERROR_TOOTALL || sign_brd_error == HNS_SGNBRD_ERROR_TOOWIDE)
+                                {
+                                    if(sign_brd_error == HNS_SGNBRD_ERROR_TOOTALL)
+                                    {
+                                        temp_too_tall = true;
+                                    }
+                                    error = HNS_MULTI_PARSER_SYNTAX_ERROR;
+                                    my_error = HNS_MULTI_SYNTAX_ERROR_TEXTTOOBIG;
+                                    fail = true;
+                                }
+                            }
 
-                            fAddPage(current_time_on,current_time_off, current_line_justification, current_page_justification);
+                            fAddPage(current_time_on,current_time_off);
 
                             fsm_state = HNS_MULTI_PARSER_STATE_TEXT;
                         }
                         else
                         {
                             error = HNS_MULTI_PARSER_SYNTAX_ERROR;
+                            my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                             fail = true;
                         }
                     }
                     else
                     {
                         error = HNS_MULTI_PARSER_UNRECOGNIZED_TAG;
+                        my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                         fail = true;
                     }
                 }
                 else
                 {
                     error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                    my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                     fail = true;
                 }
                 break;
@@ -1178,7 +1348,6 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                             {
                                 current_time_on = static_cast<double>(numbers[0])/10.0;
                                 current_time_off = default_time_off;
-                                //temp_page.fSetPageTime(static_cast<double>(numbers[0])/10.0, 0.0);
                                 fsm_state = HNS_MULTI_PARSER_STATE_TEXT;
                             }
                             else if(numbers.size() == 2)
@@ -1190,6 +1359,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                             else
                             {
                                 error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                                my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                                 fail = true;
                             }
                             f_pages[f_pages.size()-1].fPageTimeOn() = current_time_on;
@@ -1198,18 +1368,21 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                         else
                         {
                             error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                            my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                             fail = true;
                         }
                     }
                     else
                     {
                         error = HNS_MULTI_PARSER_UNRECOGNIZED_TAG;
+                        my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                         fail = true;
                     }
                 }
                 else
                 {
                     error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                    my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                     fail = true;
                 }
                 break;
@@ -1239,11 +1412,24 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                     if(f_pages.size() == 0)
                                     {
                                         //this is actually the first page.
-                                        fAddPage(current_time_on,current_time_off, current_line_justification, current_page_justification);
+                                        fAddPage(current_time_on,current_time_off);
                                     }
                                     temp_element = HNS_Message_Element2(text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
-                                    fAddElementToPage(temp_element, current_line_justification, current_page_justification);
+                                    sign_brd_error = fAddElementToPage(temp_element, current_line_justification, current_page_justification);
                                     text = "";
+                                    if(sign_brd_error != HNS_SGNBRD_ERROR_NONE)
+                                    {
+                                        if(sign_brd_error == HNS_SGNBRD_ERROR_TOOTALL || sign_brd_error == HNS_SGNBRD_ERROR_TOOWIDE)
+                                        {
+                                            if(sign_brd_error == HNS_SGNBRD_ERROR_TOOTALL)
+                                            {
+                                                temp_too_tall = true;
+                                            }
+                                            error = HNS_MULTI_PARSER_SYNTAX_ERROR;
+                                            my_error = HNS_MULTI_SYNTAX_ERROR_TEXTTOOBIG;
+                                            fail = true;
+                                        }
+                                    }
                                 }
                                 char_spacing = numbers[0];
 
@@ -1252,24 +1438,28 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                             else
                             {
                                 error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                                my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                                 fail = true;
                             }
                         }
                         else
                         {
                             error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                            my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                             fail = true;
                         }
                     }
                     else
                     {
                         error = HNS_MULTI_PARSER_UNRECOGNIZED_TAG;
+                        my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                         fail = true;
                     }
                 }
                 else
                 {
                     error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                    my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                     fail = true;
                 }
                 break;
@@ -1297,11 +1487,24 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                             if(f_pages.size() == 0)
                                             {
                                                 //this is actually the first page.
-                                                fAddPage(current_time_on,current_time_off, current_line_justification, current_page_justification);
+                                                fAddPage(current_time_on,current_time_off);
                                             }
                                             temp_element = HNS_Message_Element2(text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
-                                            fAddElementToPage(temp_element, current_line_justification, current_page_justification);
+                                            sign_brd_error = fAddElementToPage(temp_element, current_line_justification, current_page_justification);
                                             text = "";
+                                            if(sign_brd_error != HNS_SGNBRD_ERROR_NONE)
+                                            {
+                                                if(sign_brd_error == HNS_SGNBRD_ERROR_TOOTALL || sign_brd_error == HNS_SGNBRD_ERROR_TOOWIDE)
+                                                {
+
+                                                    if(sign_brd_error == HNS_SGNBRD_ERROR_TOOTALL)
+                                                    {
+                                                        temp_too_tall = true;
+                                                    } error = HNS_MULTI_PARSER_SYNTAX_ERROR;
+                                                    my_error = HNS_MULTI_SYNTAX_ERROR_TEXTTOOBIG;
+                                                    fail = true;
+                                                }
+                                            }
                                         }
                                         char_spacing = 1;
 
@@ -1310,24 +1513,28 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                     else
                                     {
                                         error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                                        my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                                         fail = true;
                                     }
                                 }
                                 else
                                 {
                                     error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                                    my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                                     fail = true;
                                 }
                             }
                             else
                             {
                                 error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                                my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                                 fail = true;
                             }
                         }
                         else
                         {
                             error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                            my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                             fail = true;
                         }
                         break;
@@ -1345,19 +1552,27 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                         //already existing text add it as an element to the page.
                                         if(!text.empty())
                                         {
-//                                            text_element = new HNS_Message_Element_Text();
-//                                            text_element->fSetText(text);
-//                                            text_element->fSetFont(current_font);
-//                                            temp_page.fAddElement(text_element);
-
                                             if(f_pages.size() == 0)
                                             {
                                                 //this is actually the first page.
-                                                fAddPage(current_time_on,current_time_off, current_line_justification, current_page_justification);
+                                                fAddPage(current_time_on,current_time_off);
                                             }
                                             temp_element = HNS_Message_Element2(text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
-                                            fAddElementToPage(temp_element, current_line_justification, current_page_justification);
+                                            sign_brd_error = fAddElementToPage(temp_element, current_line_justification, current_page_justification);
                                             text = "";
+                                            if(sign_brd_error != HNS_SGNBRD_ERROR_NONE)
+                                            {
+                                                if(sign_brd_error == HNS_SGNBRD_ERROR_TOOTALL || sign_brd_error == HNS_SGNBRD_ERROR_TOOWIDE)
+                                                {
+                                                    if(sign_brd_error == HNS_SGNBRD_ERROR_TOOTALL)
+                                                    {
+                                                        temp_too_tall = true;
+                                                    }
+                                                    error = HNS_MULTI_PARSER_SYNTAX_ERROR;
+                                                    my_error = HNS_MULTI_SYNTAX_ERROR_TEXTTOOBIG;
+                                                    fail = true;
+                                                }
+                                            }
                                         }
 
                                         flash_enabled = false;
@@ -1366,24 +1581,28 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                     else
                                     {
                                         error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                                        my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                                         fail = true;
                                     }
                                 }
                                 else
                                 {
                                     error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                                    my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                                     fail = true;
                                 }
                             }
                             else
                             {
                                 error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                                my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                                 fail = true;
                             }
                         }
                         else
                         {
                             error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                            my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                             fail = true;
                         }
                         break;
@@ -1394,6 +1613,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                 else
                 {
                     error = HNS_MULTI_PARSER_UNRECOGNIZED_TAG;
+                    my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                     fail = true;
                 }
 
@@ -1404,6 +1624,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                 break;
             default:
                 error = HNS_MULTI_PARSER_UNRECOGNIZED_TAG;
+                my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                 fail = true;
                 break;
             }
@@ -1417,6 +1638,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
             else
             {
                 error = HNS_MULTI_PARSER_UNEXPECTED_CLOSING_BRACE;
+                my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
                 fail = true;
             }
             break;
@@ -1424,27 +1646,40 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
             break;
         }
     }
-    //if(temp_page.fGetNumElements() == 0)
     if(!text.empty())
     {
-//        text_element = new HNS_Message_Element_Text();
-//        text_element->fSetText(text);
-//        text_element->fSetFont(current_font);
-//        temp_page.fAddElement(text_element);
-
         if(f_pages.size() == 0)
         {
             //this is actually the first page.
-            fAddPage(current_time_on,current_time_off, current_line_justification, current_page_justification);
+            fAddPage(current_time_on,current_time_off);
         }
         temp_element = HNS_Message_Element2(text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
-        fAddElementToPage(temp_element, current_line_justification, current_page_justification);
+        sign_brd_error = fAddElementToPage(temp_element, current_line_justification, current_page_justification);
+
+        if(sign_brd_error != HNS_SGNBRD_ERROR_NONE)
+        {
+            if(sign_brd_error == HNS_SGNBRD_ERROR_TOOTALL || sign_brd_error == HNS_SGNBRD_ERROR_TOOWIDE)
+            {
+                if(sign_brd_error == HNS_SGNBRD_ERROR_TOOTALL)
+                {
+                    temp_too_tall = true;
+                }
+                error = HNS_MULTI_PARSER_SYNTAX_ERROR;
+                my_error = HNS_MULTI_SYNTAX_ERROR_TEXTTOOBIG;
+                fail = true;
+            }
+        }
     }
-//    temp_page.fSetPageTime(current_time_on, current_time_off);
-//    temp_page.fSetLineJustification(current_line_justification);
-//    temp_page.fSetPageJustification(current_page_justification);
-//    temp_pages.push_back(temp_page);
-    //return temp_pages;
+
+    if(too_tall != nullptr)
+    {
+        *too_tall = temp_too_tall;
+    }
+
+    if(multi_error != nullptr)
+    {
+        *multi_error = my_error;
+    }
     return error;
 }
 
@@ -1453,21 +1688,21 @@ std::string HNS_Message2::fGetMULTI()
     return f_multi;
 }
 
-void HNS_Message2::fAddPage(const double &page_time_on, const double &page_time_off, const type_justification_line &default_line_justification, const type_justification_page &default_page_justification)
+void HNS_Message2::fAddPage(const double &page_time_on, const double &page_time_off)
 {
-    f_pages.push_back(HNS_Message_Page2(page_time_on,page_time_off,default_line_justification,default_page_justification,f_board_height,f_board_width));
-    if(f_pages.size() > 0)
-    {
-        f_pages[f_pages.size() - 1].fSetSignBoard(f_default_signboard);
-    }
+    HNS_Message_Page2 temp_page(page_time_on,page_time_off,f_default_signboard_info);
+    f_pages.push_back(temp_page);
 }
 
-void HNS_Message2::fAddElementToPage(HNS_Message_Element2 &element, const type_justification_line &line_justification, const type_justification_page &page_justification, const bool &newline, const ssize_t &line_spacing)
+type_hns_signboard_error HNS_Message2::fAddElementToPage(HNS_Message_Element2 &element, const type_justification_line &line_justification, const type_justification_page &page_justification, const bool &newline, const ssize_t &line_spacing)
 {
+    type_hns_signboard_error error = HNS_SGNBRD_ERROR_NONE;
+
     if(f_pages.size() > 0)
     {
-        f_pages[f_pages.size()-1].fAddElement(element,line_justification,page_justification,newline,line_spacing);
+        error = f_pages[f_pages.size()-1].fAddElement(element,line_justification,page_justification,newline,line_spacing);
     }
+    return error;
 }
 
 size_t HNS_Message2::fGetNumPages() const
@@ -1525,12 +1760,12 @@ double HNS_Message2::fGetPageTimeOff(const size_t &page) const
 
 size_t HNS_Message2::fGetBoardWidth() const
 {
-    return f_board_width;
+    return f_default_signboard_info.fGetWidth();
 }
 
 size_t HNS_Message2::fGetBoardHeight() const
 {
-    return f_board_height;
+    return f_default_signboard_info.fGetHeight();
 }
 
 void HNS_Message2::fSetFontTest(const std::vector<HNS_Font> *fonts, const size_t font_no)
@@ -1539,61 +1774,104 @@ void HNS_Message2::fSetFontTest(const std::vector<HNS_Font> *fonts, const size_t
     f_pages.clear();
     HNS_Message_Element2 temp_element;
     HNS_Message_Justified_Element temp_just_element;
-    HNS_Message_Page2 temp_page(2.0,0.0,HNS_JUSTIFICATION_LINE_CENTER,HNS_JUSTIFICATION_PAGE_CENTER,28,48);
-    temp_page.fSetSignBoard(f_default_signboard);
+    HNS_Message_Page2 temp_page(2.0,0.0,f_default_signboard_info);
     string multi;
     char temp_char = 'A';
     string tempstring;
     HNS_Font tempfont = fonts->at(font_no-1);
     bool first_line = true;
     stringstream ss;
+    size_t test = 0;
 
     ss << "[fo" << font_no << "]";
 
     multi = ss.str();
 
-    do
+    if(f_default_signboard_info.fGetType() == HNS_BRD_TRAILER_FULL_MATRIX)
     {
         do
         {
-            tempstring += temp_char;
-            temp_char++;
-            temp_element.fSetText(tempstring,tempfont,font_no,false,HNS_Flashing_Text());
-            if(temp_char > 'Z')
+            do
             {
-                break;
+                tempstring += temp_char;
+                temp_char++;
+                temp_element.fSetText(tempstring,tempfont,font_no,false,HNS_Flashing_Text());
+                if(temp_char > 'Z')
+                {
+                    break;
+                }
+            } while(temp_element.fGetWidth() < f_default_signboard_info.fGetWidth());
+
+            if(temp_char <= 'Z')
+            {
+                temp_char--;
             }
-        } while(temp_element.fGetWidth() < f_board_width);
+            if(temp_element.fGetWidth() >= f_default_signboard_info.fGetWidth())
+            {
+                tempstring.erase(tempstring.end()-1);
+            }
+            temp_element.fSetText(tempstring,tempfont,font_no,false,HNS_Flashing_Text());
 
-        if(temp_char <= 'Z')
-        {
-            temp_char--;
-        }
-        if(temp_element.fGetWidth() >= f_board_width)
-        {
-            tempstring.erase(tempstring.end()-1);
-        }
-        temp_element.fSetText(tempstring,tempfont,font_no,false,HNS_Flashing_Text());
+            temp_just_element.fAddElement(temp_element,true);
 
-        temp_just_element.fAddElement(temp_element,true);
+            if(temp_just_element.fGetHeight() < f_default_signboard_info.fGetHeight())
+            {
+                if(!first_line)
+                {
+                    multi = multi + "[nl]";
+                }
+                multi = multi + tempstring;
+                temp_page.fAddElement(temp_element,HNS_JUSTIFICATION_LINE_CENTER,HNS_JUSTIFICATION_PAGE_CENTER,true);
+            }
 
-        if(temp_just_element.fGetHeight() < f_board_height)
+            tempstring.clear();
+
+            if(first_line)
+            {
+                first_line = false;
+            }
+        }while(temp_just_element.fGetHeight() < f_default_signboard_info.fGetHeight() && temp_char <= 'Z');
+    }
+    else
+    {
+        size_t line_count = 0;
+        size_t char_count = 0;
+        do
         {
+            char_count = 0;
+            do
+            {
+                tempstring += temp_char;
+                temp_char++;
+                temp_element.fSetText(tempstring,tempfont,font_no,false,HNS_Flashing_Text());
+                if(temp_char > 'Z')
+                {
+                    break;
+                }
+                char_count++;
+            } while(char_count < f_default_signboard_info.fGetBoardsWide());
+
+            temp_element.fSetText(tempstring,tempfont,font_no,false,HNS_Flashing_Text());
+
+            temp_just_element.fAddElement(temp_element,true);
+
             if(!first_line)
             {
                 multi = multi + "[nl]";
             }
             multi = multi + tempstring;
+            test = multi.size();
             temp_page.fAddElement(temp_element,HNS_JUSTIFICATION_LINE_CENTER,HNS_JUSTIFICATION_PAGE_CENTER,true);
-        }
 
-        tempstring.clear();
+            tempstring.clear();
 
-        if(first_line)
-        {
-            first_line = false;
-        }
-    }while(temp_just_element.fGetHeight() < f_board_height && temp_char <= 'Z');
+            if(first_line)
+            {
+                first_line = false;
+            }
+            line_count++;
+        }while(line_count < f_default_signboard_info.fGetBoardsTall() && temp_char <= 'Z');
+    }
 
     fSetMULTI(multi,fonts,nullptr,nullptr);
 
@@ -1641,22 +1919,22 @@ void HNS_Message2::fSetDefaultPageTimeOff(const double &pagetime_off)
 
 double HNS_Message2::fGetDefaultFlashTimeOn()
 {
-    return f_default_flash_time_on;
+    return static_cast<double>(f_default_flash_time_on) / 10.0;
 }
 
 void HNS_Message2::fSetDefaultFlashTimeOn(const double &flashtime_on)
 {
-    f_default_flash_time_on = flashtime_on;
+    f_default_flash_time_on = static_cast<unsigned int>(flashtime_on * 10.0);
 }
 
 double HNS_Message2::fGetDefaultFlashTimeOff()
 {
-    return f_default_flash_time_off;
+    return static_cast<double>(f_default_flash_time_off) / 10.0;
 }
 
 void HNS_Message2::fSetDefaultFlashTimeOff(const double &flashtime_off)
 {
-    f_default_flash_time_off = flashtime_off;
+    f_default_flash_time_off = static_cast<unsigned int>(flashtime_off * 10.0);
 }
 
 int HNS_Message2::fGetDefaultFont()
@@ -1669,14 +1947,23 @@ void HNS_Message2::fSetDefaultFont(const int &font)
     f_default_font = font;
 }
 
-HNS_SignBoard HNS_Message2::fGetDefaultSignBoard()
+HNS_SignBoard HNS_Message2::fGetSignBoard(const int64_t &time, size_t *page_displayed)
 {
-    return f_default_signboard;
-}
+    HNS_SignBoard result = HNS_SignBoard(f_default_signboard_info);
+    unsigned int time_in_page;
+    size_t index = fGetPageIndexFromTime(time,time_in_page);
 
-void HNS_Message2::fSetDefaultSignBoard(const HNS_SignBoard &sign_board)
-{
-    f_default_signboard = sign_board;
+    if(page_displayed != nullptr)
+    {
+        *page_displayed = index;
+    }
+
+    if(index < f_pages.size())
+    {
+        result = f_pages[index].fGetSignBoard(time_in_page);
+    }
+
+    return result;
 }
 
 HNS_Message_Page2 HNS_Message2::fGetPage(const size_t &page_no) const
@@ -1699,66 +1986,72 @@ void HNS_Message2::fSetJustification(const type_justification_line &line_justifi
     }
 }
 
+size_t HNS_Message2::fGetPageIndexFromTime(const int64_t &time, unsigned int &time_in_page)
+{
+    size_t result = 0;
+    unsigned int message_period = fGetMessagePeriod();
+    int64_t adjusted_time = 0, search_time = 0, time_in_page_temp = 0;
+
+    if(message_period > 0)
+    {
+        time_in_page_temp = search_time = adjusted_time = time % message_period;
+
+        for(size_t ui=0;ui<f_pages.size();ui++)
+        {
+            search_time -= static_cast<unsigned int>(f_pages[ui].fPageTimeOn()*1000.0);
+            search_time -= static_cast<unsigned int>(f_pages[ui].fPageTimeOff()*1000.0);
+
+            if(search_time < 0)
+            {
+                result = ui;
+                time_in_page = time_in_page_temp;
+                break;
+            }
+            else
+            {
+                time_in_page_temp = search_time;
+            }
+        }
+    }
+
+    return result;
+}
+
+unsigned int HNS_Message2::fGetMessagePeriod() const
+{
+    unsigned int result = 0;
+
+    if(f_pages.size() > 1)
+    {
+        for(size_t ui=0;ui<f_pages.size();ui++)
+        {
+            result += static_cast<unsigned int>((f_pages[ui].fGetPageTimeOn() * 1000.0) + (f_pages[ui].fGetPageTimeOff() * 1000.0));
+        }
+    }
+    else if(f_pages.size() > 0)
+    {
+        result = static_cast<unsigned int>(f_pages[0].fGetPageTimeOn() * 1000.0);
+    }
+
+    return result;
+}
+
 void HNS_Message2::fResetMulti()
 {
 }
 
 HNS_Message_Page2::HNS_Message_Page2():
     f_page_time_on(2.0),
-    f_page_time_off(0.0),
-    f_board_height(0),
-    f_board_width(0),
-    f_signboard(nullptr)
+    f_page_time_off(0.0)
 {
 
 }
 
-HNS_Message_Page2::HNS_Message_Page2(const double &page_time_on, const double &page_time_off, const type_justification_line &/*line_justificiaton*/, const type_justification_page &/*page_justification*/, const size_t &board_height, const size_t &board_width):
-    f_page_time_on(page_time_on),
-    f_page_time_off(page_time_off),
-    f_board_height(board_height),
-    f_board_width(board_width),
-    f_signboard(nullptr)
+HNS_Message_Page2::HNS_Message_Page2(const double &page_time_on, const double &page_time_off, const HNS_SignBoard_Info &sign_board_info):
+    f_page_time_on(page_time_on)
+  , f_page_time_off(page_time_off)
+  , f_signboard_info(sign_board_info)
 {
-    //??? Why does it need an initial element?  should start blank.
-    //f_elements.push_back(HNS_Message_Justified_Element(line_justificiaton,page_justification));
-}
-
-HNS_Message_Page2::HNS_Message_Page2(const HNS_Message_Page2 &copy)
-{
-    f_signboard = nullptr;
-    *this = copy;
-}
-
-HNS_Message_Page2 &HNS_Message_Page2::operator=(const HNS_Message_Page2 &rhs)
-{
-
-    f_elements = rhs.f_elements;
-    f_page_time_on = rhs.f_page_time_on;
-    f_page_time_off = rhs.f_page_time_off;
-
-    f_board_height = rhs.f_board_height;
-    f_board_width = rhs.f_board_width;
-
-    f_last_element_added_was_graphic = rhs.f_last_element_added_was_graphic;
-
-    if(rhs.f_signboard != nullptr)
-    {
-        fSetSignBoard(*rhs.f_signboard);
-    }
-    else if(f_signboard != nullptr)
-    {
-        delete f_signboard;
-        f_signboard = nullptr;
-    }
-
-    return *this;
-}
-
-HNS_Message_Page2::~HNS_Message_Page2()
-{
-    delete f_signboard;
-    f_signboard = nullptr;
 }
 
 void HNS_Message_Page2::fNewJustification(const type_justification_line &line_justification, const type_justification_page &page_justification)
@@ -1781,13 +2074,14 @@ void HNS_Message_Page2::fNewJustification(const type_justification_line &line_ju
     }
 }
 
-void HNS_Message_Page2::fAddElement(HNS_Message_Element2 &element,
+type_hns_signboard_error HNS_Message_Page2::fAddElement(HNS_Message_Element2 &element,
                                     const type_justification_line &line_justification,
                                     const type_justification_page &page_justification,
                                     const bool &newline,
                                     const ssize_t &line_spacing,
                                     const ssize_t &/*char_spacing*/)
 {
+    type_hns_signboard_error error = HNS_SGNBRD_ERROR_NONE;
     if(f_elements.size() > 0)
     {
         if(element.fIsGraphic())
@@ -1807,7 +2101,10 @@ void HNS_Message_Page2::fAddElement(HNS_Message_Element2 &element,
     }
 
     fSortElements();
-    fUpdateSignBoard();
+    HNS_SignBoard temp_signboard(f_signboard_info);
+    error = fUpdateSignBoard(temp_signboard);
+
+    return error;
 }
 
 size_t HNS_Message_Page2::fGetNumElements() const
@@ -1853,29 +2150,11 @@ type_justification_page HNS_Message_Page2::fGetLastPageJustification()
     return f_elements[fLastTextElement()].fGetPageJustification();
 }
 
-void HNS_Message_Page2::fSetSignBoard(const HNS_SignBoard &sign_board)
+HNS_SignBoard HNS_Message_Page2::fGetSignBoard(const int64_t &time, const bool &preview_mode)
 {
-    if(f_signboard != nullptr)
-    {
-        *f_signboard = sign_board;
-    }
-    else
-    {
-        f_signboard = new HNS_SignBoard(sign_board);
-    }
-}
-
-HNS_SignBoard HNS_Message_Page2::fGetSignBoard()
-{
-    if(f_signboard != nullptr)
-    {
-        fUpdateSignBoard();
-        return *f_signboard;
-    }
-    else
-    {
-        return HNS_SignBoard();
-    }
+    HNS_SignBoard result(f_signboard_info);
+    fUpdateSignBoard(result,time,preview_mode);
+    return result;
 }
 
 bool HNS_Message_Page2::fSortElements()
@@ -1901,16 +2180,26 @@ bool HNS_Message_Page2::fSortElements()
     return success;
 }
 
-void HNS_Message_Page2::fUpdateSignBoard()
+type_hns_signboard_error HNS_Message_Page2::fUpdateSignBoard(HNS_SignBoard &sign_board, const int64_t &time, const bool &preview_mode)
 {
-    f_signboard->fClearBoard();
-    for(size_t ui=0;ui<f_elements.size();ui++)
+    int test = 0;
+    type_hns_signboard_error error = HNS_SGNBRD_ERROR_NONE;
+
+    sign_board.fClearBoard();
+    //MSC20220114 Making this less than or equals I think should eliminate blanks during one page messages and messages with no page off time.
+    if(time <= static_cast<int64_t>(f_page_time_on*1000.0))
     {
-        if(f_signboard != nullptr)
+        for(size_t ui=0;ui<f_elements.size();ui++)
         {
-            f_signboard->fAddElement(f_elements[ui]);
+            error = static_cast<type_hns_signboard_error>(static_cast<int>(error) | static_cast<int>(sign_board.fAddElement(f_elements[ui],time,preview_mode)));
         }
     }
+    else
+    {
+        test = 1;
+    }
+
+    return error;
 }
 
 size_t HNS_Message_Page2::fLastTextElement() const
@@ -1968,7 +2257,8 @@ void HNS_Message_Justified_Element::fChangeJustification(const type_justificatio
     f_page_justification = page_justification;
 }
 
-HNS_Bitmap HNS_Message_Justified_Element::fGetBitmap(const vector<HNS_Font> *fonts, const std::vector<HNS_Graphic> *graphics) const
+//TODO Get the bitmap to respect flashing and times.
+HNS_Bitmap HNS_Message_Justified_Element::fGetBitmap(const vector<HNS_Font> *fonts, const std::vector<HNS_Graphic> *graphics, const int64_t &time, const bool &preview_mode) const
 {
     size_t line = 0;
     int x,y;
@@ -2030,7 +2320,10 @@ HNS_Bitmap HNS_Message_Justified_Element::fGetBitmap(const vector<HNS_Font> *fon
             y = fGetYPos(line_heights,line_widths_index);
             //NTCIP 1203 section 6.4.7 says that differing height fonts on the same line should align on the bottom
             y = y + (line_heights[line_widths_index] - f_elements[i].fGetHeight());
-            result.fCopy(f_elements[i].fGetBitmap(fonts, graphics),x,y);
+            if(preview_mode || !f_elements[i].fGetIsFlashing() || IsFlashOn(time,f_elements[i].fGetFlashInfo()))
+            {
+                result.fCopy(f_elements[i].fGetBitmap(fonts, graphics),x,y);
+            }
         }
     }
 

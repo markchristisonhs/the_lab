@@ -56,8 +56,7 @@ vector<int> HNS_string_to_int_vector(const string &input, const char &delimiter,
 
 
 		if(index == string::npos) break;
-		temp_string = temp_string.substr(index+1);
-        //}while((index = temp_string.find_first_of(delimiter)) != string::npos);
+        temp_string = temp_string.substr(index+1);
     }while(1);
 
 	return result;

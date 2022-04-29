@@ -27,6 +27,7 @@ MainWindow::MainWindow(QWidget *parent)
     f_worker = new LoadNTCIP_Worker();
     f_worker->moveToThread(&f_worker_thread);
     connect(&f_worker_thread, &QThread::finished, f_worker, &QObject::deleteLater);
+    connect(f_worker, SIGNAL(destroyed(QObject*)), this, SLOT(fWorker_About_to_Destroy(QObject*)));
     connect(this,&MainWindow::operate, f_worker, &LoadNTCIP_Worker::doWork);
     connect(f_worker,&LoadNTCIP_Worker::resultReady,this,&MainWindow::fNTCIP_Ready);
     f_worker_thread.start();
@@ -49,9 +50,43 @@ void MainWindow::fNTCIP_Ready()
     f_ntcip = f_worker->fGetResult();
 
     ui->PTE_Debug->appendPlainText("Retrieved NTCIP");
+
+    f_worker_thread.exit();
+}
+
+void MainWindow::fWorker_About_to_Destroy(QObject *)
+{
+    f_worker = nullptr;
+    ui->PTE_Debug->appendPlainText("Delete worker!");
 }
 
 void MainWindow::on_PB_Test_clicked()
 {
     ui->PTE_Debug->appendPlainText("Button pushed!!!");
+    QString s = QString("Thread is ") + (f_worker_thread.isFinished() ? QString("") : QString("not ")) + QString("finished.");
+    ui->PTE_Debug->appendPlainText(s);
 }
+
+void MainWindow::on_PB_Reload_clicked()
+{
+    ui->PTE_Debug->appendPlainText("Attempting to reload NTCIP");
+    if(!f_worker_thread.isRunning())
+    {
+        f_ntcip = NTCIP_Node();
+
+        f_worker = new LoadNTCIP_Worker();
+        f_worker->moveToThread(&f_worker_thread);
+        connect(f_worker, SIGNAL(destroyed(QObject*)), this, SLOT(fWorker_About_to_Destroy(QObject*)));
+        connect(this,&MainWindow::operate, f_worker, &LoadNTCIP_Worker::doWork);
+        connect(f_worker,&LoadNTCIP_Worker::resultReady,this,&MainWindow::fNTCIP_Ready);
+        f_worker_thread.start();
+
+        emit operate(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + QDir::separator() + "NTCIP" + QDir::separator() + "NTCIP.xml",
+                     ":/NTCIP/NTCIP.xml");
+    }
+    else
+    {
+        ui->PTE_Debug->appendPlainText("NTCIP still running");
+    }
+}
+

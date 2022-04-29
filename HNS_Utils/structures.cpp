@@ -4,22 +4,49 @@
 using namespace std;
 
 HNS_Radar_Police_Speed::HNS_Radar_Police_Speed():
- f_minimum_speed(20),f_violator_speed(55),f_maximum_speed(85)
+ f_minimum_speed(20),f_violator_speed(55),f_maximum_speed(85),
+ f_minimum_speed_offset(0),f_violator_speed_offset(5),f_maximum_speed_offset(10),f_speed_mode(HNS_RADAR_NORMAL)
 {
 
 }
 
-HNS_Radar_Police_Speed::HNS_Radar_Police_Speed(const int &minimum_speed, const int &violator_speed, const int &maximum_speed):
-    f_minimum_speed(minimum_speed),f_violator_speed(violator_speed),f_maximum_speed(maximum_speed)
+HNS_Radar_Police_Speed::HNS_Radar_Police_Speed(const int &minimum_speed, const int &violator_speed, const int &maximum_speed, const int &speed_mode)
 {
+    if(speed_mode == HNS_VSL_OFFSET)
+    {
+        f_minimum_speed_offset = minimum_speed;
+        f_violator_speed_offset = violator_speed;
+        f_maximum_speed_offset = maximum_speed;
 
+        f_minimum_speed = 20;
+        f_violator_speed = 55;
+        f_maximum_speed = 85;
+
+        f_speed_mode = speed_mode;
+    }
+    else
+    {
+        f_minimum_speed_offset = 0;
+        f_violator_speed_offset = 5;
+        f_maximum_speed_offset = 10;
+
+        f_minimum_speed = minimum_speed;
+        f_violator_speed = violator_speed;
+        f_maximum_speed = maximum_speed;
+
+        f_speed_mode = HNS_RADAR_NORMAL;
+    }
 }
 
 bool HNS_Radar_Police_Speed::operator == (const HNS_Radar_Police_Speed &rhs) const
 {
     return (f_minimum_speed == rhs.f_minimum_speed)
         && (f_violator_speed == rhs.f_violator_speed)
-        && (f_maximum_speed == rhs.f_maximum_speed);
+        && (f_maximum_speed == rhs.f_maximum_speed)
+        && (f_minimum_speed_offset == rhs.f_minimum_speed_offset)
+        && (f_violator_speed_offset == rhs.f_violator_speed_offset)
+        && (f_maximum_speed_offset == rhs.f_maximum_speed_offset)
+        && (f_speed_mode == rhs.f_speed_mode);
 }
 
 bool HNS_Radar_Police_Speed::operator != (const HNS_Radar_Police_Speed &rhs) const
@@ -57,6 +84,49 @@ void HNS_Radar_Police_Speed::fSetMaximumSpeed(const int &maximum_speed)
     f_maximum_speed = maximum_speed;
 }
 
+int HNS_Radar_Police_Speed::fGetMinimumSpeedOffset() const
+{
+    return f_minimum_speed_offset;
+}
+
+int HNS_Radar_Police_Speed::fGetViolatorSpeedOffset() const
+{
+    return f_violator_speed_offset;
+}
+
+int HNS_Radar_Police_Speed::fGetMaximumSpeedOffSet() const
+{
+    return f_maximum_speed_offset;
+}
+
+int HNS_Radar_Police_Speed::fGetSpeedMode() const
+{
+    return f_speed_mode;
+}
+
+void HNS_Radar_Police_Speed::fSetMinimumSpeedOffset(const int &offset)
+{
+    f_minimum_speed_offset = offset;
+}
+
+void HNS_Radar_Police_Speed::fSetViolatorSpeedOffset(const int &offset)
+{
+    f_violator_speed_offset = offset;
+}
+
+void HNS_Radar_Police_Speed::fSetMaximumSpeedOffset(const int &offset)
+{
+    f_maximum_speed_offset = offset;
+}
+
+void HNS_Radar_Police_Speed::fSetSpeedMode(const int &mode)
+{
+    if(mode == HNS_RADAR_NORMAL || mode == HNS_VSL_OFFSET)
+    {
+        f_speed_mode = mode;
+    }
+}
+
 void HNS_Radar_Police_Speed::fSetSpeed(const int &minimum_speed, const int &violator_speed, const int &maximum_speed)
 {
     f_minimum_speed = minimum_speed;
@@ -67,7 +137,10 @@ void HNS_Radar_Police_Speed::fSetSpeed(const int &minimum_speed, const int &viol
 HNS_Radar_Strobe::HNS_Radar_Strobe():
     f_duration(1),
     f_pattern(1),
-    f_speed(15)
+    f_speed(15),
+    f_speed_offset(0),
+    f_enabled(false),
+    f_speed_mode(HNS_RADAR_NORMAL)
 {
 
 }
@@ -97,18 +170,23 @@ void HNS_Radar_Strobe::fSetDuration(const int &duration)
 
 void HNS_Radar_Strobe::fSetPattern(const int &pattern)
 {
-    if(pattern > 4)
+    if(pattern > 3)
     {
-        f_pattern = 4;
+        f_pattern = 3;
     }
-    else if(pattern < 1)
+    else if(pattern < 0)
     {
-        f_pattern = 1;
+        f_pattern = 0;
     }
     else
     {
         f_pattern = pattern;
     }
+}
+
+void HNS_Radar_Strobe::fSetPatternUI(const int &pattern)
+{
+    fSetPattern(pattern-1);
 }
 
 void HNS_Radar_Strobe::fSetSpeed(const int &speed)
@@ -132,6 +210,19 @@ void HNS_Radar_Strobe::fSetEnabled(const bool &enabled)
     f_enabled = enabled;
 }
 
+void HNS_Radar_Strobe::fSetSpeedMode(const int &speed_mode)
+{
+    if(speed_mode == HNS_RADAR_NORMAL || speed_mode == HNS_VSL_OFFSET)
+    {
+        f_speed_mode = speed_mode;
+    }
+}
+
+void HNS_Radar_Strobe::fSetSpeedOffset(const int &speed_offset)
+{
+    f_speed_offset = speed_offset;
+}
+
 void HNS_Radar_Strobe::fGetStrobeSettings(int &duration, int &pattern, int &speed) const
 {
     duration = fGetDuration();
@@ -147,6 +238,11 @@ int HNS_Radar_Strobe::fGetDuration() const
 int HNS_Radar_Strobe::fGetPattern() const
 {
     return f_pattern;
+}
+
+int HNS_Radar_Strobe::fGetPatternUI() const
+{
+    return f_pattern+1;
 }
 
 int HNS_Radar_Strobe::fGetSpeed() const

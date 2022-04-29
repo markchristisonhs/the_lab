@@ -10,36 +10,24 @@ using namespace std;
 using namespace NTCIP_MESSAGE;
 using namespace NTCIP_GRAPHICS;
 
-void CorrectTree_1203(NTCIP_Node *ntcip);
-void CorrectTree_1203Messages(NTCIP_Node *ntcip);
-
 int CountMessages(NTCIP_Node *ntcip, const NTCIP_MESSAGE::type_ntcip_message_memory_type &memory_type)
 {
     int result = 0;
     stringstream ss;
     int itemp;
 
-    size_t max_messages = 0;
+    size_t max_messages = MaxMessages(ntcip,memory_type);
 
     switch(memory_type)
     {
+    case MEM_TYPE_BLANK:
+    case MEM_TYPE_SCHEDULE:
+    case MEM_TYPE_CURRENT:
     case MEM_TYPE_PERMANENT:
-        result = max_messages = ntcip->fGetIntData(gk_dmsNumPermanentMsg);
+        result = max_messages;
         break;
     case MEM_TYPE_CHANGEABLE:
-        max_messages = ntcip->fGetIntData(gk_dmsMaxChangeableMsg);
-        break;
     case MEM_TYPE_VOLATILE:
-        max_messages = ntcip->fGetIntData(gk_dmsMaxVolatileMsg);
-        break;
-    case MEM_TYPE_CURRENT:
-        result = max_messages = 1;
-        break;
-    case MEM_TYPE_SCHEDULE:
-        result = max_messages = 1;
-        break;
-    case MEM_TYPE_BLANK:
-        result = max_messages = 255;
         break;
     }
 
@@ -56,6 +44,35 @@ int CountMessages(NTCIP_Node *ntcip, const NTCIP_MESSAGE::type_ntcip_message_mem
                 result++;
             }
         }
+    }
+
+    return result;
+}
+
+int MaxMessages(NTCIP_Node *ntcip, const NTCIP_MESSAGE::type_ntcip_message_memory_type &memory_type)
+{
+    int result = 0;
+
+    switch(memory_type)
+    {
+    case MEM_TYPE_PERMANENT:
+        result = ntcip->fGetIntData(gk_dmsNumPermanentMsg);
+        break;
+    case MEM_TYPE_CHANGEABLE:
+        result = ntcip->fGetIntData(gk_dmsMaxChangeableMsg);
+        break;
+    case MEM_TYPE_VOLATILE:
+        result = ntcip->fGetIntData(gk_dmsMaxVolatileMsg);
+        break;
+    case MEM_TYPE_CURRENT:
+        result = 1;
+        break;
+    case MEM_TYPE_SCHEDULE:
+        result = 1;
+        break;
+    case MEM_TYPE_BLANK:
+        result = 255;
+        break;
     }
 
     return result;
@@ -199,19 +216,4 @@ vector<unsigned char> GetBitmapDataStream(const HNS_Bitmap &bitmap, const type_n
         }
     }
     return result;
-}
-
-void CorrectTree(NTCIP_Node *ntcip)
-{
-    CorrectTree_1203(ntcip);
-}
-
-void CorrectTree_1203(NTCIP_Node *ntcip)
-{
-    CorrectTree_1203Messages(ntcip);
-}
-
-void CorrectTree_1203Messages(NTCIP_Node */*ntcip*/)
-{
-
 }

@@ -45,11 +45,13 @@ public:
     void fSetEndDate(const std::tm &date);
     void fSetStartTime(const std::tm &start);
     void fSetStopTime(const std::tm &stop);
+    void fSetTitle(const std::string &title);
 
     std::tm fGetStartDate() const;
     std::tm fGetEndDate() const;
     std::tm fGetStartTime() const;
     std::tm fGetStopTime() const;
+    std::string fGetTitle() const;
     bool fIsActive() const;
 
     void fSetMessage(const type_message_type &message_type, const int &message_no);
@@ -60,7 +62,6 @@ public:
 private:
     bool f_week[7];
 
-    //std::tm f_date;
     std::tm f_start_date;
     std::tm f_end_date;
     std::tm f_start;
@@ -73,6 +74,7 @@ private:
     int f_message_no;
 
     HNS_Message2 f_scheduled_message;
+    std::string f_title;
 };
 
 bool IsDateInSchedule(const HNS_Schedule &schedule, const int64_t &current_date);

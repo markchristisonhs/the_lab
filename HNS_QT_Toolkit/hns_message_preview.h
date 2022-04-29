@@ -31,7 +31,7 @@ public:
 
     void fSetMessage(const HNS_Message2 &message, const bool &do_update = true);
     void fSetMessage(const QString &multi, const bool &do_update = true);
-    void fUpdate(const bool &refresh_pages = false, const bool &blank = false);
+    bool fUpdate(const bool &refresh_pages = false, const bool &blank = false);
 
     void fSetActivationCode(const HNS_NTCIP_MessageActivationCode &activation_code);
 
@@ -77,6 +77,7 @@ public:
     bool fIsSelected() const;
 
     void fChangeFont(const int &font_no, const bool &all = false);
+    int fTotalPage() const;
 
     HNS_Message2 fGetCurrentMessage() const;
     HNS_NTCIP_MessageActivationCode fGetActivationCode() const;
@@ -98,9 +99,13 @@ private slots:
 signals:
     void fLineJustificationChanged(const type_justification_line &line_justification);
     void fPageJustificationChanged(const type_justification_page &page_justification);
-    void fClicked();
+    void fClicked(QMouseEvent *event);
+
+    void fNewPageCreated();
 
 private:
+    bool fIsNewPageNeeded(const QString &input);
+
     Ui::HNS_Message_Preview *ui;
 
     HNS_Message2 f_current_message;

@@ -23,12 +23,15 @@ public:
 
 public slots:
     void fNTCIP_Ready();
+    void fWorker_About_to_Destroy(QObject *obj = nullptr);
 
 signals:
     void operate(const QString &, const QString &);
 
 private slots:
     void on_PB_Test_clicked();
+
+    void on_PB_Reload_clicked();
 
 private:
     Ui::MainWindow *ui;

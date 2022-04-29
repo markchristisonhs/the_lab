@@ -162,7 +162,7 @@ QVector<HNS_Schedule> LoadSchedulesXML(const QString &path, const std::vector<HN
     QStringRef tempstring_ref;
     int i;
     string multi_string;
-    HNS_Message2 temp_message(48,28);
+    HNS_Message2 temp_message;
     //string caller = "";
     //ostringstream s;
 
@@ -254,20 +254,10 @@ QVector<HNS_Schedule> LoadSchedulesXML(const QString &path, const std::vector<HN
                     multi_string = xml.attributes().value("Message").toString().toStdString();
                     temp_message.fSetMULTI(multi_string,fonts,graphics,field_data);
                     schedule.fSetMessage(temp_message);
-//                    if(xml.attributes().value("MessageType").toInt() == 0)
-//                    {
-//                        message_type = HNS_MESSAGE_TYPE_FACTORY;
-//                    }
-//                    else
-//                    {
-//                        message_type = HNS_MESSAGE_TYPE_CUSTOM;
-//                    }
-//                    message_no = xml.attributes().value("MessageNo").toInt();
-//                    schedule.fSetMessage(message_type,message_no);
 
-                    //s << "Schedule found.  Schedule is " << string(schedule.fIsActive() ? "" : "not") << " active.";
-                    //gLog->fLogALine(s.str(),caller);
-                    //s.str("");
+                    tempstring = "";
+                    tempstring = xml.attributes().value("Title").toString();
+                    schedule.fSetTitle(tempstring.toStdString());
 
                     result.push_back(schedule);
                 }
@@ -296,6 +286,7 @@ void SaveSchedulesXML(const QString &path, const QVector<HNS_Schedule> &schedule
     QTime start,stop;
     QDate date_start,date_stop;
     QString tempstring;
+    QString title;
     HNS_Message2 temp_message;
 //    type_message_type message_type;
 //    int message_no;
@@ -318,13 +309,13 @@ void SaveSchedulesXML(const QString &path, const QVector<HNS_Schedule> &schedule
         date_stop = ConvertSTLDatetoQDate(schedules[i].fGetEndDate());
         start = ConvertSTLTimetoQTime(schedules[i].fGetStartTime());
         stop = ConvertSTLTimetoQTime(schedules[i].fGetStopTime());
-        //schedules[i].fGetMessage(message_type,message_no);
         schedules[i].fGetMessage(temp_message);
         xml.writeStartElement("Schedule");
         xml.writeAttribute("ID",QString("%1").arg(i));
         xml.writeAttribute("Active",QString("%1").arg(schedules[i].fIsActive()));
         xml.writeAttribute("StartDate",date_start.toString("yyyy.M.d"));
         xml.writeAttribute("StopDate",date_stop.toString("yyyy.M.d"));
+        xml.writeAttribute("Title",QString::fromStdString(schedules[i].fGetTitle()));
         tempstring = "";
         for(j=0;j<7;j++)
         {

@@ -1,11 +1,21 @@
 #include "MessageBoard.h"
 
+#include "CRC.h"
+
 using namespace std;
 
 vector<HNS_Font> HNS_SignBoard::f_fonts;
 vector<HNS_Graphic> HNS_SignBoard::f_graphics;
 
-HNS_SignBoard::HNS_SignBoard():
+enum
+{
+    HNS_SGNBRD_SPC_DATA_DUAL_DISPLAY = 0,
+    HNS_SGNBRD_SPC_DATA_VSL = 1
+};
+
+const int gk_num_specials = 2;
+
+HNS_SignBoard_Info::HNS_SignBoard_Info():
     f_boards_wide(0)
   , f_boards_tall(0)
   , f_orientation(HNS_BRD_ORIENTATION_BYTES_HORIZONTAL)
@@ -14,13 +24,16 @@ HNS_SignBoard::HNS_SignBoard():
   , f_hsize(3000)
   , f_vborder(100)
   , f_hborder(100)
+  , f_specials(HNS_SGNBRD_SPECIAL_NONE)
+  , f_special_data(gk_num_specials)
 {
 
 }
 
-HNS_SignBoard::HNS_SignBoard(const size_t &boards_wide, const size_t &boards_tall, const type_hns_board_orientation &orientation, const type_hns_trailer_type &type,
-                             const size_t &vsize, const size_t &hsize, const size_t &vborder, const size_t &hborder, const string &name):
-    f_boards(boards_wide*boards_tall)
+HNS_SignBoard_Info::HNS_SignBoard_Info(const HNS_Board &board, const size_t &boards_wide, const size_t &boards_tall, const type_hns_board_orientation &orientation,
+                                       const type_hns_trailer_type &type, const size_t &vsize, const size_t &hsize, const size_t &vborder,
+                                       const size_t &hborder, const string &name, const string &graphic_name, const type_hns_signboard_specials &specials):
+    f_board(board)
   , f_boards_wide(boards_wide)
   , f_boards_tall(boards_tall)
   , f_orientation(orientation)
@@ -30,202 +43,39 @@ HNS_SignBoard::HNS_SignBoard(const size_t &boards_wide, const size_t &boards_tal
   , f_vborder(vborder)
   , f_hborder(hborder)
   , f_name(name)
+  , f_graphic_name(graphic_name)
+  , f_specials(specials)
+  , f_special_data(gk_num_specials)
 {
 
 }
 
-void HNS_SignBoard::fSetBoardsWide(const int &boards_wide)
+size_t HNS_SignBoard_Info::fGetWidth() const
 {
-    f_boards_wide = boards_wide;
-    fResize();
-}
-
-void HNS_SignBoard::fSetBoardsTall(const int &boards_tall)
-{
-    f_boards_tall = boards_tall;
-    fResize();
-}
-
-void HNS_SignBoard::fSetOrientation(const type_hns_board_orientation &orientation)
-{
-    f_orientation = orientation;
-}
-
-void HNS_SignBoard::fSetType(const type_hns_trailer_type &type)
-{
-    f_type = type;
-}
-
-void HNS_SignBoard::fSetName(const string &name)
-{
-    f_name = name;
-}
-
-void HNS_SignBoard::fSetGraphicName(const string &graphic_name)
-{
-    f_graphic_name = graphic_name;
-}
-
-void HNS_SignBoard::fSetVSize(const size_t &vsize)
-{
-    f_vsize = vsize;
-}
-
-void HNS_SignBoard::fSetHSize(const size_t &hsize)
-{
-    f_hsize = hsize;
-}
-
-void HNS_SignBoard::fSetVBorder(const size_t &vborder)
-{
-    f_vborder = vborder;
-}
-
-void HNS_SignBoard::fSetHBorder(const size_t &hborder)
-{
-    f_hborder = hborder;
-}
-
-void HNS_SignBoard::fSetBoard(const HNS_Board &board)
-{
-    for(size_t i=0;i<f_boards.size();i++)
-    {
-        f_boards[i] = board;
-    }
-}
-
-size_t HNS_SignBoard::fGetWidth() const
-{
-    if(f_boards.size() == 0)
-    {
-        return 0;
-    }
-
     if(f_orientation == HNS_BRD_ORIENTATION_BYTES_HORIZONTAL)
     {
-        return f_boards_wide * f_boards[0].fGetLedsPerByte();
+        return f_boards_wide * f_board.fGetLedsPerByte();
     }
     else
     {
-        return f_boards_wide * f_boards[0].fGetNumBytes();
+        return f_boards_wide * f_board.fGetNumBytes();
     }
 }
 
-size_t HNS_SignBoard::fGetHeight() const
+size_t HNS_SignBoard_Info::fGetHeight() const
 {
-    if(f_boards.size() == 0)
-    {
-        return 0;
-    }
-
     if(f_orientation == HNS_BRD_ORIENTATION_BYTES_HORIZONTAL)
     {
-        return f_boards_tall * f_boards[0].fGetNumBytes();
+        return f_boards_tall * f_board.fGetNumBytes();
     }
     else
     {
-        return f_boards_tall & f_boards[0].fGetLedsPerByte();
+        return f_boards_tall * f_board.fGetLedsPerByte();
     }
 }
 
-type_hns_board_orientation HNS_SignBoard::fGetOrientation() const
+size_t HNS_SignBoard_Info::fGetCharacterHeight() const
 {
-    return f_orientation;
-}
-
-type_hns_trailer_type HNS_SignBoard::fGetType() const
-{
-    return f_type;
-}
-
-string HNS_SignBoard::fGetName() const
-{
-    return f_name;
-}
-
-string HNS_SignBoard::fGetGraphicName() const
-{
-    return f_graphic_name;
-}
-
-size_t HNS_SignBoard::fGetBoardsTall() const
-{
-    return f_boards_tall;
-}
-
-size_t HNS_SignBoard::fGetBoardsWide() const
-{
-    return f_boards_wide;
-}
-
-size_t HNS_SignBoard::fGetNumBoards() const
-{
-    return f_boards.size();
-}
-
-size_t HNS_SignBoard::fGetLedsPerByte(const size_t &board) const
-{
-    if(board < f_boards.size())
-    {
-        return f_boards[board].fGetLedsPerByte();
-    }
-    return 0;
-}
-
-size_t HNS_SignBoard::fGetNumBytes(const size_t &board) const
-{
-    if(board < f_boards.size())
-    {
-        return f_boards[board].fGetNumBytes();
-    }
-    return 0;
-}
-
-size_t HNS_SignBoard::fGetVPitch(const size_t &board) const
-{
-    if(board < f_boards.size())
-    {
-        return f_boards[board].fGetVPitch();
-    }
-    return 30;
-}
-
-size_t HNS_SignBoard::fGetHPitch(const size_t &board) const
-{
-    if(board < f_boards.size())
-    {
-        return f_boards[board].fGetHPitch();
-    }
-    return 30;
-}
-
-size_t HNS_SignBoard::fGetVSize() const
-{
-    return f_vsize;
-}
-
-size_t HNS_SignBoard::fGetHSize() const
-{
-    return f_hsize;
-}
-
-size_t HNS_SignBoard::fGetVBorder() const
-{
-    return f_vborder;
-}
-
-size_t HNS_SignBoard::fGetHBorder() const
-{
-    return f_hborder;
-}
-
-size_t HNS_SignBoard::fGetCharacterHeight() const
-{
-    if(f_boards.size() == 0)
-    {
-        return 0;
-    }
-
     if(f_type == HNS_BRD_TRAILER_CHARACTER_BOARD)
     {
         return fGetBoardHeight();
@@ -236,13 +86,8 @@ size_t HNS_SignBoard::fGetCharacterHeight() const
     }
 }
 
-size_t HNS_SignBoard::fGetCharacterWidth() const
+size_t HNS_SignBoard_Info::fGetCharacterWidth() const
 {
-    if(f_boards.size() == 0)
-    {
-        return 0;
-    }
-
     if(f_type == HNS_BRD_TRAILER_CHARACTER_BOARD)
     {
         return fGetBoardWidth();
@@ -251,6 +96,308 @@ size_t HNS_SignBoard::fGetCharacterWidth() const
     {
         return 0;
     }
+}
+
+void HNS_SignBoard_Info::fSetSpecialData(const type_hns_signboard_specials &specials, const vector<int> &special_data)
+{
+    if((static_cast<int>(specials) & static_cast<int>(HNS_SGNBRD_SPECIAL_DUAL_DISPLAY)) != 0)
+    {
+        f_special_data[HNS_SGNBRD_SPC_DATA_DUAL_DISPLAY] = special_data;
+    }
+    else if((static_cast<int>(specials) & static_cast<int>(HNS_SGNBRD_SPECIAL_VSL)) != 0)
+    {
+        f_special_data[HNS_SGNBRD_SPC_DATA_VSL] = special_data;
+    }
+}
+
+vector<int> HNS_SignBoard_Info::fGetSpecialData(const type_hns_signboard_specials &specials) const
+{
+    vector<int> result;
+
+    if((static_cast<int>(specials) & static_cast<int>(HNS_SGNBRD_SPECIAL_DUAL_DISPLAY)) != 0)
+    {
+        result = f_special_data[HNS_SGNBRD_SPC_DATA_DUAL_DISPLAY];
+    }
+    else if((static_cast<int>(specials) & static_cast<int>(HNS_SGNBRD_SPECIAL_VSL)) != 0)
+    {
+        result = f_special_data[HNS_SGNBRD_SPC_DATA_VSL];
+    }
+
+    return result;
+}
+
+HNS_SignBoard_Info HNS_SignBoard_Info::fGetAdjustedBoardInfo() const
+{
+    HNS_SignBoard_Info result;
+    size_t size;
+
+    if(fGetSpecial(HNS_SGNBRD_SPECIAL_DUAL_DISPLAY))
+    {
+        size = f_boards_wide/2;
+        result = *this;
+        result.fSetBoardsWide(size);
+    }
+    else
+    {
+        result = *this;
+    }
+
+    return result;
+}
+
+size_t HNS_SignBoard_Info::fGetBoardHeight() const
+{
+    if(f_orientation == HNS_BRD_ORIENTATION_BYTES_VERTICAL)
+    {
+        return f_board.fGetLedsPerByte();
+    }
+    else
+    {
+        return f_board.fGetNumBytes();
+    }
+}
+
+size_t HNS_SignBoard_Info::fGetBoardWidth() const
+{
+    if(f_orientation == HNS_BRD_ORIENTATION_BYTES_VERTICAL)
+    {
+        return f_board.fGetNumBytes();
+    }
+    else
+    {
+        return f_board.fGetLedsPerByte();
+    }
+}
+
+HNS_SignBoard::HNS_SignBoard()
+{
+
+}
+
+HNS_SignBoard::HNS_SignBoard(const size_t &boards_wide, const size_t &boards_tall, const type_hns_board_orientation &orientation, const type_hns_trailer_type &type,
+                             const size_t &vsize, const size_t &hsize, const size_t &vborder, const size_t &hborder, const string &name, const string &graphic_name,
+                             const type_hns_signboard_specials &specials):
+    f_boards(boards_wide*boards_tall)
+  , f_signboard_info(HNS_Board(),boards_wide,boards_tall,orientation,type,vsize,hsize,vborder,hborder,name,graphic_name,specials)
+{
+
+}
+
+HNS_SignBoard::HNS_SignBoard(const HNS_SignBoard_Info &info):
+    f_boards(info.fGetBoardsWide()*info.fGetBoardsTall(),HNS_Board(info.fGetBoard()))
+  , f_signboard_info(info)
+{
+
+}
+
+HNS_SignBoard_Info HNS_SignBoard::fGetSignBoardInfo() const
+{
+    return f_signboard_info;
+}
+
+void HNS_SignBoard::fSetBoardsWide(const int &boards_wide)
+{
+    f_signboard_info.fSetBoardsWide(boards_wide);
+    fResize();
+}
+
+void HNS_SignBoard::fSetBoardsTall(const int &boards_tall)
+{
+    f_signboard_info.fSetBoardsTall(boards_tall);
+    fResize();
+}
+
+void HNS_SignBoard::fSetOrientation(const type_hns_board_orientation &orientation)
+{
+    f_signboard_info.fSetOrientation(orientation);
+}
+
+void HNS_SignBoard::fSetType(const type_hns_trailer_type &type)
+{
+    f_signboard_info.fSetType(type);
+}
+
+void HNS_SignBoard::fSetName(const string &name)
+{
+    f_signboard_info.fSetName(name);
+}
+
+void HNS_SignBoard::fSetGraphicName(const string &graphic_name)
+{
+    f_signboard_info.fSetGraphicName(graphic_name);
+}
+
+void HNS_SignBoard::fSetVSize(const size_t &vsize)
+{
+    f_signboard_info.fSetVSize(vsize);
+}
+
+void HNS_SignBoard::fSetHSize(const size_t &hsize)
+{
+    f_signboard_info.fSetHSize(hsize);
+}
+
+void HNS_SignBoard::fSetVBorder(const size_t &vborder)
+{
+    f_signboard_info.fSetVBorder(vborder);
+}
+
+void HNS_SignBoard::fSetHBorder(const size_t &hborder)
+{
+    f_signboard_info.fSetHBorder(hborder);
+}
+
+void HNS_SignBoard::fSetBoard(const HNS_Board &board)
+{
+    f_signboard_info.fSetBoard(board);
+}
+
+void HNS_SignBoard::fSetBoard(const HNS_Board &board, const size_t &index)
+{
+    if(index < f_boards.size())
+    {
+        f_boards[index] = board;
+    }
+}
+
+void HNS_SignBoard::fSetBoards(const std::vector<HNS_Board> &boards, const size_t &index)
+{
+    for(size_t ui = 0;ui < boards.size(); ui++)
+    {
+        fSetBoard(boards[ui],index+ui);
+    }
+}
+
+HNS_Board HNS_SignBoard::fGetBoard(const size_t &index) const
+{
+    HNS_Board result;
+
+    if(index < f_boards.size())
+    {
+        result = f_boards[index];
+    }
+
+    return result;
+}
+
+vector<HNS_Board> HNS_SignBoard::fGetBoards() const
+{
+    return f_boards;
+}
+
+size_t HNS_SignBoard::fGetWidth() const
+{
+    if(f_boards.size() == 0)
+    {
+        return 0;
+    }
+
+    return f_signboard_info.fGetWidth();
+}
+
+size_t HNS_SignBoard::fGetHeight() const
+{
+    if(f_boards.size() == 0)
+    {
+        return 0;
+    }
+
+    return f_signboard_info.fGetHeight();
+}
+
+type_hns_board_orientation HNS_SignBoard::fGetOrientation() const
+{
+    return f_signboard_info.fGetOrientation();
+}
+
+type_hns_trailer_type HNS_SignBoard::fGetType() const
+{
+    return f_signboard_info.fGetType();
+}
+
+string HNS_SignBoard::fGetName() const
+{
+    return f_signboard_info.fGetName();
+}
+
+string HNS_SignBoard::fGetGraphicName() const
+{
+    return f_signboard_info.fGetGraphicName();
+}
+
+size_t HNS_SignBoard::fGetBoardsTall() const
+{
+    return f_signboard_info.fGetBoardsTall();
+}
+
+size_t HNS_SignBoard::fGetBoardsWide() const
+{
+    return f_signboard_info.fGetBoardsWide();
+}
+
+size_t HNS_SignBoard::fGetNumBoards() const
+{
+    return f_boards.size();
+}
+
+size_t HNS_SignBoard::fGetLedsPerByte() const
+{
+    return f_signboard_info.fGetBoard().fGetLedsPerByte();
+}
+
+size_t HNS_SignBoard::fGetNumBytes() const
+{
+    return f_signboard_info.fGetBoard().fGetNumBytes();
+}
+
+size_t HNS_SignBoard::fGetVPitch() const
+{
+    return f_signboard_info.fGetBoard().fGetVPitch();
+}
+
+size_t HNS_SignBoard::fGetHPitch() const
+{
+    return f_signboard_info.fGetBoard().fGetHPitch();
+}
+
+size_t HNS_SignBoard::fGetVSize() const
+{
+    return f_signboard_info.fGetVSize();
+}
+
+size_t HNS_SignBoard::fGetHSize() const
+{
+    return f_signboard_info.fGetHSize();
+}
+
+size_t HNS_SignBoard::fGetVBorder() const
+{
+    return f_signboard_info.fGetVBorder();
+}
+
+size_t HNS_SignBoard::fGetHBorder() const
+{
+    return f_signboard_info.fGetHBorder();
+}
+
+size_t HNS_SignBoard::fGetCharacterHeight() const
+{
+    if(f_boards.size() == 0)
+    {
+        return 0;
+    }
+
+    return f_signboard_info.fGetCharacterHeight();
+}
+
+size_t HNS_SignBoard::fGetCharacterWidth() const
+{
+    if(f_boards.size() == 0)
+    {
+        return 0;
+    }
+
+    return f_signboard_info.fGetCharacterWidth();
 }
 
 HNS_Bitmap HNS_SignBoard::fGetCharBoardBitmap(const size_t &board_no)
@@ -329,12 +476,12 @@ void HNS_SignBoard::fSetGraphics(const vector<HNS_Graphic> &graphics)
     f_graphics = graphics;
 }
 
-type_hns_signboard_error HNS_SignBoard::fAddElement(HNS_Message_Justified_Element &element)
+type_hns_signboard_error HNS_SignBoard::fAddElement(HNS_Message_Justified_Element &element, const int64_t &time, const bool &preview_mode)
 {
     HNS_Message_Element2 temp_element;
     size_t current_line = 0;
     string tempstring;
-    if(f_type == HNS_BRD_TRAILER_FULL_MATRIX)
+    if(f_signboard_info.fGetType() == HNS_BRD_TRAILER_FULL_MATRIX)
     {
         size_t x,y;
         HNS_Bitmap temp_bitmap;
@@ -348,7 +495,7 @@ type_hns_signboard_error HNS_SignBoard::fAddElement(HNS_Message_Justified_Elemen
             }
             else
             {
-                temp_bitmap = element.fGetBitmap(&f_fonts, &f_graphics);
+                temp_bitmap = element.fGetBitmap(&f_fonts, &f_graphics,time,preview_mode);
             }
 
             if(element.fIsGraphic())
@@ -361,34 +508,70 @@ type_hns_signboard_error HNS_SignBoard::fAddElement(HNS_Message_Justified_Elemen
                 switch(element.fGetLineJustification())
                 {
                 case HNS_JUSTIFICATION_LEFT:
+                    if(temp_bitmap.fGetWidth() > fGetWidth())
+                    {
+                        return HNS_SGNBRD_ERROR_TOOWIDE;
+                    }
                     x = 0;
                     break;
                 case HNS_JUSTIFICATION_FULL:
                 case HNS_JUSTIFICATION_LINE_CENTER:
-                    x = (fGetWidth() - temp_bitmap.fGetWidth())/2;
+                    if(temp_bitmap.fGetWidth() <= fGetWidth())
+                    {
+                        x = (fGetWidth() - temp_bitmap.fGetWidth())/2;
+                    }
+                    else
+                    {
+                        return HNS_SGNBRD_ERROR_TOOWIDE;
+                    }
                     break;
                 case HNS_JUSTIFICATION_RIGHT:
-                    x = fGetWidth() - temp_bitmap.fGetWidth();
+                    if(temp_bitmap.fGetWidth() <= fGetWidth())
+                    {
+                        x = fGetWidth() - temp_bitmap.fGetWidth();
+                    }
+                    else
+                    {
+                        return HNS_SGNBRD_ERROR_TOOWIDE;
+                    }
                     break;
                 }
 
                 switch(element.fGetPageJustification())
                 {
                 case HNS_JUSTIFICATION_TOP:
+                    if(temp_bitmap.fGetHeight() > fGetHeight())
+                    {
+                        return HNS_SGNBRD_ERROR_TOOTALL;
+                    }
                     y = 0;
                     break;
                 case HNS_JUSTIFICATION_PAGE_CENTER:
-                    y = (fGetHeight() - temp_bitmap.fGetHeight())/2;
+                    if(temp_bitmap.fGetHeight() <= fGetHeight())
+                    {
+                        y = (fGetHeight() - temp_bitmap.fGetHeight())/2;
+                    }
+                    else
+                    {
+                        return HNS_SGNBRD_ERROR_TOOTALL;
+                    }
                     break;
                 case HNS_JUSTIFICATION_BOTTOM:
-                    y = fGetHeight() - temp_bitmap.fGetHeight();
+                    if(temp_bitmap.fGetHeight() <= fGetHeight())
+                    {
+                        y = fGetHeight() - temp_bitmap.fGetHeight();
+                    }
+                    else
+                    {
+                        return HNS_SGNBRD_ERROR_TOOTALL;
+                    }
                     break;
                 }
             }
             fApplyBitmapToFMBoard(temp_bitmap,x,y);
         }
     }
-    else if(f_type == HNS_BRD_TRAILER_CHARACTER_BOARD)
+    else if(f_signboard_info.fGetType() == HNS_BRD_TRAILER_CHARACTER_BOARD)
     {
         if( f_boards.size() == (fGetBoardsWide() * fGetBoardsTall()) )
         {
@@ -546,14 +729,14 @@ vector< vector<unsigned char> > HNS_SignBoard::fGetDataStream()
     vector < vector <unsigned char> > result;
     vector <unsigned char> temp_vec;
 
+    vector <HNS_Board> temp_boards;
+
     if((f_boards.size() == (fGetBoardsTall() * fGetBoardsWide())) && (f_boards.size() > 0))
     {
         switch(f_boards[0].fGetDisplayType())
         {
         case HNS_DISP_BROADCAST:
             result.resize(1);
-            //Not needed; the insert function below handles this just fine
-            //result[0].resize(f_boards[0].fGetNumBytes() * fGetNumVirBoards());
             break;
         case HNS_DISP_ONE_BOARD_AT_A_TIME:
             result.resize(fGetNumVirBoards());
@@ -564,9 +747,26 @@ vector< vector<unsigned char> > HNS_SignBoard::fGetDataStream()
             break;
         }
 
-        for(size_t ui = 0; ui < f_boards.size(); ui++)
+        if(f_boards[0].fGetSplit())
         {
-            temp_vec = fGetVirBytes(ui);
+            temp_boards.resize(fGetNumVirBoards(),HNS_Board(f_boards[0].fGetName(),f_boards[0].fGetNumBytes()/2,f_boards[0].fGetLedsPerByte(),f_boards[0].fGetHPitch(),f_boards[0].fGetVPitch(),f_boards[0].fGetSplit(),f_boards[0].fGetSplitWidth()));
+            size_t target_board = 0;
+
+            for(size_t ui=0;ui<f_boards.size();ui++)
+            {
+                target_board = (2 * ui) - (ui % f_boards[0].fGetSplitWidth());
+                temp_boards[target_board] = f_boards[ui].fGetSplitBoard(HNS_BOARD_SPLIT_UPPER);
+                temp_boards[target_board+f_boards[0].fGetSplitWidth()] = f_boards[ui].fGetSplitBoard(HNS_BOARD_SPLIT_LOWER);
+            }
+        }
+        else
+        {
+            temp_boards = f_boards;
+        }
+
+        for(size_t ui = 0; ui < temp_boards.size(); ui++)
+        {
+            temp_vec = temp_boards[ui].fGetBytes();
             switch(f_boards[0].fGetDisplayType())
             {
             case HNS_DISP_BROADCAST:
@@ -686,7 +886,7 @@ void HNS_SignBoard::fGiveUpPixSearch()
 
 void HNS_SignBoard::fResize()
 {
-    f_boards.resize(f_boards_wide * f_boards_tall);
+    f_boards.resize(f_signboard_info.fGetBoardsWide() * f_signboard_info.fGetBoardsTall());
 }
 
 void HNS_SignBoard::fApplyCharacterToBoard(const HNS_Bitmap &character, const size_t &board_no)
@@ -694,7 +894,7 @@ void HNS_SignBoard::fApplyCharacterToBoard(const HNS_Bitmap &character, const si
     unsigned char byte = 0;
     if(board_no < f_boards.size())
     {
-        if(f_orientation == HNS_BRD_ORIENTATION_BYTES_HORIZONTAL)
+        if(f_signboard_info.fGetOrientation() == HNS_BRD_ORIENTATION_BYTES_HORIZONTAL)
         {
             if((character.fGetWidth() <= f_boards[board_no].fGetLedsPerByte())
             && (character.fGetHeight() <= f_boards[board_no].fGetNumBytes()))
@@ -713,11 +913,12 @@ void HNS_SignBoard::fApplyCharacterToBoard(const HNS_Bitmap &character, const si
                 }
             }
         }
-        else if(f_orientation == HNS_BRD_ORIENTATION_BYTES_VERTICAL)
+        else if(f_signboard_info.fGetOrientation() == HNS_BRD_ORIENTATION_BYTES_VERTICAL)
         {
             if((character.fGetWidth() <= f_boards[board_no].fGetNumBytes())
             && (character.fGetHeight() <= f_boards[board_no].fGetLedsPerByte()))
             {
+                size_t x_start = (f_boards[board_no].fGetNumBytes() - character.fGetWidth()) / 2;
                 for(size_t x = 0; x < character.fGetWidth();x++)
                 {
                     byte = 0;
@@ -728,7 +929,7 @@ void HNS_SignBoard::fApplyCharacterToBoard(const HNS_Bitmap &character, const si
                             byte = byte | (0x1 << (character.fGetHeight()-y-1));
                         }
                     }
-                    f_boards[board_no].fSetByte(x,byte);
+                    f_boards[board_no].fSetByte(x+x_start,byte);
                 }
             }
         }
@@ -776,13 +977,13 @@ size_t HNS_SignBoard::fGetBoardHeight() const
 {
     if(f_boards.size() > 0)
     {
-        if(f_orientation == HNS_BRD_ORIENTATION_BYTES_VERTICAL)
+        if(f_signboard_info.fGetOrientation() == HNS_BRD_ORIENTATION_BYTES_VERTICAL)
         {
-            return f_boards[0].fGetLedsPerByte();
+            return f_signboard_info.fGetBoard().fGetLedsPerByte();
         }
         else
         {
-            return f_boards[0].fGetNumBytes();
+            return f_signboard_info.fGetBoard().fGetNumBytes();
         }
     }
     else
@@ -795,7 +996,7 @@ size_t HNS_SignBoard::fGetBoardWidth() const
 {
     if(f_boards.size() > 0)
     {
-        if(f_orientation == HNS_BRD_ORIENTATION_BYTES_VERTICAL)
+        if(f_signboard_info.fGetOrientation() == HNS_BRD_ORIENTATION_BYTES_VERTICAL)
         {
             return f_boards[0].fGetNumBytes();
         }
@@ -930,7 +1131,11 @@ HNS_Board::HNS_Board(const std::string &name, const size_t &num_bytes, const siz
   , f_split(split)
   , f_split_width(split_width)
 {
-
+    //MSC20211214 the case where split is true and split width is 0 is invalid and will cause a crash.  In such a case, disable split
+    if(f_split && (f_split_width == 0))
+    {
+        f_split = false;
+    }
 }
 
 size_t HNS_Board::fGetNumBytes() const
@@ -988,6 +1193,36 @@ unsigned char HNS_Board::fGetByte(const size_t &index) const
 vector <unsigned char> HNS_Board::fGetBytes() const
 {
     return f_bytes;
+}
+
+HNS_Board HNS_Board::fGetSplitBoard(const int &upper_lower) const
+{
+    HNS_Board result;
+    size_t adjust;
+
+    if(fGetSplit())
+    {
+        if(upper_lower == HNS_BOARD_SPLIT_UPPER)
+        {
+            adjust = 0;
+        }
+        else
+        {
+            adjust = fGetNumBytes()/2;
+        }
+
+        result = HNS_Board(fGetName(),fGetNumBytes()/2,fGetLedsPerByte(),fGetHPitch(),fGetVPitch(),fGetSplit(),fGetSplitWidth());
+        for(size_t ui=0;ui<fGetNumBytes()/2;ui++)
+        {
+            result.fSetByte(ui,fGetByte(ui+adjust));
+        }
+    }
+    else
+    {
+        result = *this;
+    }
+
+    return result;
 }
 
 void HNS_Board::fClearBoard()
@@ -1065,4 +1300,22 @@ type_hns_pix_out_state HNS_Board::fGetPixelOutState() const
 void HNS_Board::fSetPixelOutState(const type_hns_pix_out_state &state)
 {
     f_pix_out_state = state;
+}
+
+void HNS_DisplayBuffer::fSetBuffer(const std::vector<unsigned char> &buffer)
+{
+    f_buffer = buffer;
+    f_crc = CalcCRC(f_buffer);
+}
+
+void HNS_DisplayBuffer::fClear()
+{
+    f_buffer.clear();
+    f_crc = CalcCRC(f_buffer);
+}
+
+void HNS_DisplayBuffer::fPushBack(const unsigned char &item)
+{
+    f_buffer.push_back(item);
+    f_crc = CalcCRC(f_buffer);
 }

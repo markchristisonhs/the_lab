@@ -46,6 +46,25 @@ typedef enum
     HNS_MULTI_PARSER_UNDEFINED_GRAPHIC
 } type_mutli_parser_error;
 
+typedef enum
+{
+    HNS_MULTI_SYNTAX_ERROR_OTHER = 1,
+    HNS_MULTI_SYNTAX_ERROR_NONE = 2,
+    HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG = 3,
+    HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAGVALUE = 4,
+    HNS_MULTI_SYNTAX_ERROR_TEXTTOOBIG = 5,
+    HNS_MULTI_SYNTAX_ERROR_FONTNOTDEFINED = 6,
+    HNS_MULTI_SYNTAX_ERROR_CHARACTERNOTDEFINED = 7,
+    HNS_MULTI_SYNTAX_ERROR_FIELDDEVICENOTEXIST = 8,
+    HNS_MULTI_SYNTAX_ERROR_FIELDDEVICEERROR = 9,
+    HNS_MULTI_SYNTAX_ERROR_FLASHREGIONERROR = 10,
+    HNS_MULTI_SYNTAX_ERROR_TAGCONFLICT = 11,
+    HNS_MULTI_SYNTAX_ERROR_TOOMANYPAGES = 12,
+    HNS_MULTI_SYNTAX_ERROR_FONTVERSIONID = 13,
+    HNS_MULTI_SYNTAX_ERROR_GRAPHICID = 14,
+    HNS_MULTI_SYNTAX_ERROR_GRAPHICNOTDEFINED = 15
+} type_multi_syntax_error;
+
 class HNS_Message_Element2;
 class HNS_Message;
 class HNS_Message_Page;
@@ -82,9 +101,9 @@ class HNS_Message2
 {
 public:
     HNS_Message2();
-    HNS_Message2(const size_t &board_height, const size_t &board_width);
+    HNS_Message2(const HNS_SignBoard_Info &signboard_info);
 
-    int fSetMULTI(std::string &multi_string, const std::vector<HNS_Font> *fonts, const std::vector<HNS_Graphic> *graphics, const HNS_Field_Data *field_data);
+    int fSetMULTI(std::string &multi_string, const std::vector<HNS_Font> *fonts, const std::vector<HNS_Graphic> *graphics, const HNS_Field_Data *field_data, type_multi_syntax_error *multi_error = nullptr, bool *too_tall = nullptr);
     std::string fGetMULTI();
     size_t fGetNumPages() const;
 
@@ -119,25 +138,26 @@ public:
     static int fGetDefaultFont();
     static void fSetDefaultFont(const int &font);
 
-    static HNS_SignBoard fGetDefaultSignBoard();
-    static void fSetDefaultSignBoard(const HNS_SignBoard &sign_board);
+    static HNS_SignBoard_Info fGetDefaultSignBoardInfo() {return f_default_signboard_info;}
+    static void fSetDefaultSignBoardInfo(const HNS_SignBoard_Info &sign_board_info) {f_default_signboard_info = sign_board_info;}
 
+    HNS_SignBoard fGetSignBoard(const int64_t &time, size_t *page_displayed = nullptr);
     HNS_Message_Page2 fGetPage(const size_t &page_no) const;
 private:
-    void fAddPage(const double &page_time_on, const double &page_time_off, const type_justification_line &default_line_justification, const type_justification_page &default_page_justification);
-    void fAddElementToPage(HNS_Message_Element2 &element, const type_justification_line &line_justification, const type_justification_page &page_justification, const bool &newline = false, const ssize_t &line_spacing = -1);
+    void fAddPage(const double &page_time_on, const double &page_time_off);
+    type_hns_signboard_error fAddElementToPage(HNS_Message_Element2 &element, const type_justification_line &line_justification, const type_justification_page &page_justification, const bool &newline = false, const ssize_t &line_spacing = -1);
     void fSetJustification(const type_justification_line &line_justification, const type_justification_page &page_justification);
     void fResetMulti();
+    size_t fGetPageIndexFromTime(const int64_t &time, unsigned int &time_in_page);
+    unsigned int fGetMessagePeriod() const;
     std::vector<HNS_Message_Page2> f_pages;
-
-    size_t f_board_height, f_board_width;
 
     static type_justification_line f_default_line_justification;
     static type_justification_page f_default_page_justification;
     static double f_default_page_time_on, f_default_page_time_off;
-    static double f_default_flash_time_on, f_default_flash_time_off;
+    static unsigned int f_default_flash_time_on, f_default_flash_time_off;
     static int f_default_font;
-    static HNS_SignBoard f_default_signboard;
+    static HNS_SignBoard_Info f_default_signboard_info;
 
     //the currently set multistring
     std::string f_multi;
@@ -147,14 +167,10 @@ class HNS_Message_Page2
 {
 public:
     HNS_Message_Page2();
-    HNS_Message_Page2(const double &page_time_on, const double &page_time_off, const type_justification_line &line_justificiaton, const type_justification_page &page_justification, const size_t &board_height, const size_t &board_width);
-
-    HNS_Message_Page2(const HNS_Message_Page2 &copy);
-    HNS_Message_Page2 &operator=(const HNS_Message_Page2 &rhs);
-    ~HNS_Message_Page2();
+    HNS_Message_Page2(const double &page_time_on, const double &page_time_off,const HNS_SignBoard_Info &sign_board_info);
 
     void fNewJustification(const type_justification_line &line_justification, const type_justification_page &page_justification);
-    void fAddElement(HNS_Message_Element2 &element,const type_justification_line &line_justification, const type_justification_page &page_justification, const bool &newline = false, const ssize_t &line_spacing = -1, const ssize_t &char_spacing = -1);
+    type_hns_signboard_error fAddElement(HNS_Message_Element2 &element,const type_justification_line &line_justification, const type_justification_page &page_justification, const bool &newline = false, const ssize_t &line_spacing = -1, const ssize_t &char_spacing = -1);
     size_t fGetNumElements() const;
     void fAddNewline();
 
@@ -167,25 +183,20 @@ public:
     type_justification_line fGetLastLineJustification();
     type_justification_page fGetLastPageJustification();
 
-    void fSetSignBoard(const HNS_SignBoard &sign_board);
-    HNS_SignBoard fGetSignBoard();
+    HNS_SignBoard fGetSignBoard(const int64_t &time = 0, const bool &preview_mode = false);
 private:
     //This function places all graphical elements on the end of the vector and also verifies that all justified elements are in logical order.
     //That is left,center,right for line and top,center,bottom for page.  Also remember that for each page justification no line justification
     //can coexist with full justification
     bool fSortElements();
     //This function puts the text on to the sign board
-    void fUpdateSignBoard();
+    type_hns_signboard_error fUpdateSignBoard(HNS_SignBoard &sign_board, const int64_t &time = 0, const bool &preview_mode = false);
     //Assuming the array is sorted, this returns the last text element
     size_t fLastTextElement() const;
     std::vector<HNS_Message_Justified_Element> f_elements;
     double f_page_time_on, f_page_time_off;
 
-    size_t f_board_height, f_board_width;
-
-    bool f_last_element_added_was_graphic;
-
-    HNS_SignBoard *f_signboard;
+    HNS_SignBoard_Info f_signboard_info;
 };
 
 //This is legitimately confusing so bare with me.  The MULTI specification laid out in NTCIP1203 chapter 6 indicates that each line may have text blocks that are justified left, center, right,
@@ -203,7 +214,7 @@ public:
     HNS_Message_Element2 fGetElement(const size_t &index) const;
     void fChangeJustification(const type_justification_line &line_justification, const type_justification_page &page_justification);
 
-    HNS_Bitmap fGetBitmap(const std::vector<HNS_Font> *fonts, const std::vector<HNS_Graphic> *graphics) const;
+    HNS_Bitmap fGetBitmap(const std::vector<HNS_Font> *fonts, const std::vector<HNS_Graphic> *graphics, const int64_t &time = 0, const bool &preview_mode = false) const;
     //non-const because this will end up modifying the elements for width
     HNS_Bitmap fGetBitmapFullJustified(const std::vector<HNS_Font> *fonts);
 
@@ -262,6 +273,9 @@ public:
     std::string fGetText() const;
     int fGetFontNo() const;
 
+    HNS_Flashing_Text fGetFlashInfo() const {return f_flash_info;}
+    bool fGetIsFlashing() const {return f_is_flashing;}
+
     HNS_Bitmap fGetBitmap(const std::vector<HNS_Font> *fonts, const std::vector<HNS_Graphic> *graphics) const;
     //this is non const because it resizes the text block to a new width
     HNS_Bitmap fGetBitmapFixedWidth(const std::vector<HNS_Font> *fonts, const size_t &fixed_width);
@@ -269,7 +283,6 @@ private:
     bool f_is_graphic;
     std::string f_text;
     int f_graphic_no, f_font_no;
-    //type_justification_line f_line_justification;
     HNS_Flashing_Text f_flash_info;
     bool f_is_flashing;
 

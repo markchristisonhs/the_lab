@@ -53,7 +53,7 @@ int64_t Clock_to_Int()
     auto now = std::chrono::system_clock::now();
     auto now_ms = std::chrono::time_point_cast<std::chrono::milliseconds>(now);
     auto epoch = now_ms.time_since_epoch();
-    long result = epoch.count();
+    int64_t result = epoch.count();
 
     return result;
 }
@@ -108,7 +108,9 @@ enum
 	HNS_SMC_CMD_GETCALCOUNT = 0xBA,
 	HNS_SMC_CMD_SETPWMPERIOD = 0xBB,
 	HNS_SMC_CMD_STOREPWMFLASH = 0xBC,
-	HNS_SMC_CMD_GETPWMFLASH = 0x7D
+    HNS_SMC_CMD_GETPWMFLASH = 0x7D,
+
+    HNS_SMC_CMD_SPCL_SETSTROBE = 0xFF
 };
 
 typedef enum
@@ -157,7 +159,9 @@ HNS_SMCBus_Command::HNS_SMCBus_Command(const unsigned char &command, const unsig
     }
     //MSC20211113 Remember, display data does not expect data back.  Other commands I THINK don't expect data back, but not sure.  Research required.
     else if((command == HNS_SMC_CMD_DISPLAYDATA)
-         || (command == HNS_SMC_CMD_SETPWM))
+         || (command == HNS_SMC_CMD_SETPWM)
+         || (command == HNS_SMC_CMD_SPCL_SETSTROBE)
+         || (command == HNS_SMC_CMD_INITPIXELOUT))
     {
         f_bytes_expected = 0;
     }
@@ -243,14 +247,10 @@ bool HNS_SMCBus_Command::fIsCommandDone() const
 
 bool HNS_SMCBus_Command::fIsSendDelayOver() const
 {
-//    stringstream ss;
     std::chrono::time_point<std::chrono::steady_clock> current_clock = std::chrono::steady_clock::now();
     std::chrono::milliseconds diff = std::chrono::duration_cast<std::chrono::milliseconds>(current_clock - f_command_created);
     if(diff > f_send_delay)
     {
-//        ss.str("");
-//        ss << "Command " << static_cast<unsigned int>(fGetCommand()) << " to address " << static_cast<unsigned int>(fGetAddress()) << " has reached the send delay";
-//        LogALine_SMC(ss.str(),"HNS_SMCBus_Command::fIsSendDelayOver()");
         return true;
     }
     else
@@ -326,25 +326,43 @@ vector<unsigned char> HNS_SMCBus_Command::fBuildPacket() const
     vector<unsigned char> to_send;
     size_t i;
 
-    to_send.push_back(0xFF);
-    to_send.push_back(0xFF);
-    to_send.push_back(0xFF);
-    to_send.push_back(0x55);
-    to_send.push_back(0xAA);
-    to_send.push_back((unsigned char)(f_send_data.size() >> 8) & 0xFF);
-    to_send.push_back((unsigned char)(f_send_data.size() & 0xFF));
-    to_send.push_back(f_command);
-    to_send.push_back(f_address);
-    for(i=0;i<f_send_data.size();i++)
+    if(f_command != HNS_SMC_CMD_SPCL_SETSTROBE)
     {
-        to_send.push_back(f_send_data[i]);
+
+        to_send.push_back(0xFF);
+        to_send.push_back(0xFF);
+        to_send.push_back(0xFF);
+        to_send.push_back(0x55);
+        to_send.push_back(0xAA);
+        to_send.push_back((unsigned char)(f_send_data.size() >> 8) & 0xFF);
+        to_send.push_back((unsigned char)(f_send_data.size() & 0xFF));
+        to_send.push_back(f_command);
+        to_send.push_back(f_address);
+        for(i=0;i<f_send_data.size();i++)
+        {
+            to_send.push_back(f_send_data[i]);
+        }
+    }
+    else
+    {
+        to_send.push_back(0xFF);
+        to_send.push_back(0x0A);
+        to_send.push_back(0xF5);
+        to_send.push_back(0x03);
+        to_send.push_back(0xFF);
+        to_send.push_back(0x03);
+        for(i=0;i<f_send_data.size();i++)
+        {
+            to_send.push_back(f_send_data[i]);
+        }
     }
 
     return to_send;
 }
 
-HNS_SMCBus2::HNS_SMCBus2()
-    : f_pending_command(nullptr)
+HNS_SMCBus2::HNS_SMCBus2():
+  f_sim_flag(HNS_SMC_BUS_NOSIM)
+  , f_pending_command(nullptr)
 {
 }
 
@@ -367,6 +385,8 @@ HNS_SMCBus2 &HNS_SMCBus2::operator =(const HNS_SMCBus2 &rhs)
 
     f_pending_command_queue = rhs.f_pending_command_queue;
     f_completed_command_queue = rhs.f_completed_command_queue;
+
+    f_sim_flag = rhs.f_sim_flag;
 
     delete f_pending_command;
     f_pending_command = nullptr;
@@ -438,12 +458,30 @@ bool HNS_SMCBus2::fSetPWM(const unsigned char &board_number, const unsigned int 
     {
         data.push_back(pwm_val);
     }
-    //f_pending_command_queue.push_back(HNS_SMCBus_Command(HNS_SMC_CMD_SETPWM,board_number,data));
     fPushNewPendingCommand(HNS_SMCBus_Command(HNS_SMC_CMD_SETPWM,board_number,data));
 
-//    fPrintQueue();
-
     return false;
+}
+
+void HNS_SMCBus2::fSetStrobe(const bool &onoff, const bool &daynight, const int &pattern)
+{
+    vector<unsigned char> data;
+
+    data.push_back(onoff ? 0x1 : 0x2);
+    data.push_back(daynight ? 0x1 : 0x0);
+    if(pattern < 0)
+    {
+        data.push_back(0x0);
+    }
+    else if(pattern > 3)
+    {
+        data.push_back(0x3);
+    }
+    else
+    {
+        data.push_back(pattern);
+    }
+    fPushNewPendingCommand(HNS_SMCBus_Command(HNS_SMC_CMD_SPCL_SETSTROBE,0,data));
 }
 
 void HNS_SMCBus2::fPushBuffer(const vector<unsigned char> &input)
@@ -490,9 +528,6 @@ void HNS_SMCBus2::fPendingCommandSent()
     stringstream ss;
     if(f_pending_command != nullptr)
     {
-//        ss.str("");
-//        ss << "Data was sent at timestamp " << Clock_to_Int();
-//        LogALine_SMC(ss.str(),"HNS_SMCBus2::fPendingCommandSent");
         f_pending_command->fDataWasSent();
     }
 
@@ -549,9 +584,43 @@ void HNS_SMCBus2::fPrintQueue()
     LogALine_SMC(ss.str(),caller);
 }
 
+void HNS_SMCBus2::fSetSimFlag(const unsigned int &flag)
+{
+    f_sim_flag = f_sim_flag | flag;
+}
+
+void HNS_SMCBus2::fClearSimFlag(const unsigned int &flag)
+{
+    f_sim_flag = f_sim_flag | ~flag;
+}
+
+bool HNS_SMCBus2::fGetSimFlag(const unsigned int &flag)
+{
+    return (f_sim_flag & flag);
+}
+
+unsigned char HNS_SMCBus2::fGetSimSpeed()
+{
+    const int speed_step = 5;
+    const int64_t time_interval = 5000;
+    const unsigned char start = 20;
+    const unsigned char end = 80;
+    const int num_steps = ((end - start)/speed_step) + 1;
+
+    static unsigned char speed = start;
+
+    int64_t current_time = abs(Clock_to_Int());
+    int64_t steps_since_epoch = current_time / time_interval;
+    int64_t current_step = steps_since_epoch % num_steps;
+    int64_t temp_speed = start +  (current_step * speed_step);
+
+    speed = static_cast<unsigned char>(temp_speed);
+
+    return speed;
+}
+
 void HNS_SMCBus2::fCheckBuffer()
 {
-    stringstream ss;
     static type_hns_smc_state current_state = HNS_SMC_BUS_RECV_STATE_ADDRESS_SEARCH;
     vector<unsigned char>::iterator it = f_receive_buffer.begin();
     while(it != f_receive_buffer.end())
@@ -578,9 +647,6 @@ void HNS_SMCBus2::fCheckBuffer()
                     {
                         if(*it == f_pending_command->fGetAddress())
                         {
-//                            ss.str("");
-//                            ss << "Found address " << static_cast<unsigned int>(f_pending_command->fGetAddress()) << ", now look for data";
-//                            LogALine_SMC(ss.str(),"HNS_SMCBus2::fCheckBuffer");
                             current_state = HNS_SMC_BUS_RECV_STATE_DATA_COLLECTION;
                         }
                         it = f_receive_buffer.erase(f_receive_buffer.begin());
@@ -599,9 +665,6 @@ void HNS_SMCBus2::fCheckBuffer()
                     it = f_receive_buffer.erase(f_receive_buffer.begin());
                     break;
                 case HNS_SMC_BUS_RECV_STATE_DATA_COLLECTION:
-//                    ss.str("");
-//                    ss << "Adding data " << static_cast<unsigned int>(*it) << " to pending command";
-//                    LogALine_SMC(ss.str(),"HNS_SMCBus2::fCheckBuffer");
                     f_pending_command->fAddReturnData(*it);
                     it = f_receive_buffer.erase(f_receive_buffer.begin());
                     break;
@@ -612,9 +675,6 @@ void HNS_SMCBus2::fCheckBuffer()
 
                 if(f_pending_command->fReturnDataIsAvailable())
                 {
-//                    ss.str("");
-//                    ss << "Found all data for address " << static_cast<unsigned int>(f_pending_command->fGetAddress()) << ", clean pending command";
-//                    LogALine_SMC(ss.str(),"HNS_SMCBus2::fCheckBuffer");
                     //no need to clean the queue here, let the event loop take care of it
                     current_state = HNS_SMC_BUS_RECV_STATE_ADDRESS_SEARCH;
                 }
@@ -623,6 +683,7 @@ void HNS_SMCBus2::fCheckBuffer()
             {
                 //probably not necessary, but just in case.
                 current_state = HNS_SMC_BUS_RECV_STATE_ADDRESS_SEARCH;
+                it = f_receive_buffer.erase(f_receive_buffer.begin());
             }
         }
     }
@@ -630,23 +691,17 @@ void HNS_SMCBus2::fCheckBuffer()
 
 void HNS_SMCBus2::fGetNextPendingCommand()
 {
-    stringstream ss;
     if(f_pending_command == nullptr)
     {
         if(!f_pending_command_queue.empty())
         {
             f_pending_command = new HNS_SMCBus_Command(f_pending_command_queue.front());
-            //no need to log display datas, that happens a lot, is of not of concern right now, and would flood the log
-//            if(f_pending_command->fGetCommand() != HNS_SMC_CMD_DISPLAYDATA)
-//            {
-//                ss.str("");
-//                ss << "At timestamp " << Clock_to_Int() << " the pending command is now:";
-//                LogALine_SMC(ss.str(),"HNS_SMCBus2::fGetNextPendingCommand");
-//                LogCommand(*f_pending_command);
-//            }
+            if(f_pending_command_queue.front().fGetAddress() == HNS_SMC_ADDR_RADAR && fGetSimFlag(HNS_SMC_BUS_SIM_RADAR))
+            {
+                f_pending_command->fDataWasSent();
+                f_pending_command->fAddReturnData(fGetSimSpeed());
+            }
             f_pending_command_queue.erase(f_pending_command_queue.begin());
-
-//            fPrintQueue();
         }
     }
 }

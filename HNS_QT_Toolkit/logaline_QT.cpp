@@ -2,7 +2,8 @@
 #include <QDateTime>
 #include <QTextStream>
 
-HNS_LogALine_QT::HNS_LogALine_QT()
+HNS_LogALine_QT::HNS_LogALine_QT():
+    f_timestamp(false)
 {
 
 }
@@ -12,7 +13,8 @@ void HNS_LogALine_QT::fLogALine(const std::string &line)
     QFile output_file(f_file_path);
     output_file.open(QIODevice::WriteOnly|QIODevice::Append);
     QTextStream output_stream(&output_file);
-    QString formatted_line = QString::fromStdString(line);
+    QDateTime current = QDateTime::currentDateTime();
+    QString formatted_line = (f_timestamp ? (current.toString("yyyy.MM.dd hh:mm:ss.zzz") + " : ") : "") + QString::fromStdString(line);
 
     if(output_file.isOpen())
     {
@@ -27,9 +29,10 @@ void HNS_LogALine_QT::fLogALine(const std::string &line, const std::string &call
 {
     QFile output_file(f_file_path);
     output_file.open(QIODevice::WriteOnly|QIODevice::Append);
+    QDateTime current = QDateTime::currentDateTime();
     QTextStream output_stream(&output_file);
 
-    QString formatted_line = QString("%1 : %2").arg(QString::fromStdString(caller)).arg(QString::fromStdString(line));
+    QString formatted_line = (f_timestamp ? (current.toString("yyyy.MM.dd hh:mm:ss.zzz") + " : ") : "") + QString("%1 : %2").arg(QString::fromStdString(caller)).arg(QString::fromStdString(line));
 
     if(output_file.isOpen())
     {
@@ -102,4 +105,9 @@ HNS_LogALine_QT::~HNS_LogALine_QT()
 void HNS_LogALine_QT::fSetLogfileLocation(const QString &path)
 {
     f_file_path = path;
+}
+
+void HNS_LogALine_QT::fSetTimestamp(const bool &timestamp)
+{
+    f_timestamp = timestamp;
 }

@@ -6,7 +6,8 @@ HNS_Schedule::HNS_Schedule():
     f_active(false),
     f_suspend(false),
     f_message_type(HNS_MESSAGE_TYPE_FACTORY),
-    f_message_no(0)
+    f_message_no(0),
+    f_title("")
 {
     int i;
     for(i=0;i<7;i++)
@@ -167,6 +168,11 @@ void HNS_Schedule::fSetStopTime(const std::tm &stop)
     f_stop = stop;
 }
 
+void HNS_Schedule::fSetTitle(const std::string &title)
+{
+    f_title = title;
+}
+
 void HNS_Schedule::fSetActive(const bool &active)
 {
     f_active = active;
@@ -205,6 +211,11 @@ std::tm HNS_Schedule::fGetStartTime() const
 std::tm HNS_Schedule::fGetStopTime() const
 {
     return f_stop;
+}
+
+std::string HNS_Schedule::fGetTitle() const
+{
+    return f_title;
 }
 
 bool HNS_Schedule::fIsActive() const

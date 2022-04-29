@@ -37,6 +37,12 @@ typedef enum
     HNS_SMC_BUS_NO_MORE_COMPLETED_COMMANDS
 } type_hns_smc_bus_error;
 
+enum
+{
+    HNS_SMC_BUS_NOSIM = 0x0,
+    HNS_SMC_BUS_SIM_RADAR = 0x1
+};
+
 class HNS_SMCBus_Command
 {
 public:
@@ -113,6 +119,7 @@ public:
     void fStartPixelOut(const unsigned char &board_number);
     void fGetPixelOutData(const unsigned char &board_number, const int &num_boards = -1);
     bool fSetPWM(const unsigned char &board_number, const unsigned int &pwm_val);
+    void fSetStrobe(const bool &onoff, const bool &daynight, const int &pattern);
 
     //returns any completed commands after pushing.  Commands are purged after completion at this point.
     void fPushBuffer(const std::vector<unsigned char> &input);
@@ -126,7 +133,12 @@ public:
     type_hns_smc_bus_error fPopCompleteCommand(HNS_SMCBus_Command &result);
 
     void fPrintQueue();
+
+    void fSetSimFlag(const unsigned int &flag);
+    void fClearSimFlag(const unsigned int &flag);
 private:
+    bool fGetSimFlag(const unsigned int &flag);
+    unsigned char fGetSimSpeed();
     void fCheckBuffer();
     void fGetNextPendingCommand();
     void fCleanPending();
@@ -137,6 +149,7 @@ private:
 
     std::vector<HNS_SMCBus_Command> f_pending_command_queue;
     std::queue<HNS_SMCBus_Command> f_completed_command_queue;
+    unsigned int f_sim_flag;
 
     HNS_SMCBus_Command *f_pending_command;
 };

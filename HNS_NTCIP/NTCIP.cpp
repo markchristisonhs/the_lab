@@ -23,6 +23,52 @@ void LogALine(const string &line, const string &caller)
     }
 }
 
+NTCIP_Node_Access::NTCIP_Node_Access(NTCIP_Node *ntcip)
+{
+    f_ntcip = ntcip;
+}
+
+NTCIP_Node *NTCIP_Node_Access::fGetChild( const size_t &index)
+{
+    if(f_ntcip != nullptr)
+    {
+        return f_ntcip->fGetChild(index);
+    }
+    else
+    {
+        return nullptr;
+    }
+}
+
+NTCIP_Node *NTCIP_Node_Access::fGetChild( const std::string &oid, std::string *last_valid_oid)
+{
+    if(f_ntcip != nullptr)
+    {
+        return f_ntcip->fGetChild(oid,last_valid_oid);
+    }
+    else
+    {
+        return nullptr;
+    }
+}
+
+NTCIP_Node *NTCIP_Node_Access::fGetChildByName( const std::string &name)
+{
+    if(f_ntcip != nullptr)
+    {
+        return f_ntcip->fGetChildByName(name);
+    }
+    else
+    {
+        return nullptr;
+    }
+}
+
+NTCIP_Node *NTCIP_Node_Access::fGetNode()
+{
+    return f_ntcip;
+}
+
 NTCIP_Node::NTCIP_Node(NTCIP_Node *parent)
 {
     f_oid_number = 1;
@@ -30,6 +76,7 @@ NTCIP_Node::NTCIP_Node(NTCIP_Node *parent)
     f_access = HNS_NTCIP_READ;
     f_binary_mode = false;
     f_parent = parent;
+    f_isdirty = false;
 }
 
 NTCIP_Node::NTCIP_Node(const int &oid_number, NTCIP_Node *parent)
@@ -39,6 +86,7 @@ NTCIP_Node::NTCIP_Node(const int &oid_number, NTCIP_Node *parent)
     f_access = HNS_NTCIP_READ;
     f_binary_mode = false;
     f_parent = parent;
+    f_isdirty = false;
 }
 
 NTCIP_Node::NTCIP_Node(const NTCIP_Node &copy)
@@ -77,6 +125,21 @@ void NTCIP_Node::fClone(const NTCIP_Node &clone_source, NTCIP_Node *parent)
     {
         f_children[i] = new NTCIP_Node();
         f_children[i]->fClone(*clone_source.f_children[i],this);
+    }
+}
+
+void NTCIP_Node::fRememberSave()
+{
+    if(fGetNumChildren() > 0)
+    {
+        for(size_t ui=0; ui<fGetNumChildren(); ui++)
+        {
+            f_children[ui]->fRememberSave();
+        }
+    }
+    else
+    {
+        f_data_at_last_save = f_data;
     }
 }
 
@@ -710,6 +773,43 @@ type_ntcip_data_access NTCIP_Node::fGetDataAccess() const
     return f_access;
 }
 
+bool NTCIP_Node::fIsDirty() const
+{
+    bool result = false;
+
+    if(fGetNumChildren() > 0)
+    {
+        for(size_t ui=0; ui<f_children.size(); ui++)
+        {
+            result = result || f_children[ui]->fIsDirty();
+            if(result)
+            {
+                break;
+            }
+        }
+    }
+    else
+    {
+        if(f_data.size() != f_data_at_last_save.size())
+        {
+            result = true;
+        }
+        else
+        {
+            for(size_t ui=0; ui<f_data.size();ui++)
+            {
+                result = result || (f_data[ui] != f_data_at_last_save[ui]);
+                if(result)
+                {
+                    break;
+                }
+            }
+        }
+    }
+
+    return result;
+}
+
 bool NTCIP_Node::fGetBinaryMode() const
 {
     return f_binary_mode;
@@ -723,6 +823,27 @@ void NTCIP_Node::fClearChildren()
         f_children[i] = nullptr;
     }
     f_children.clear();
+}
+
+void NTCIP_Node::fClearChildren(const string &oid, type_ntcip_error *error)
+{
+    NTCIP_Node *child_node = fGetChild(oid);
+
+    if(child_node != nullptr)
+    {
+        if(error != nullptr)
+        {
+            *error = HNS_NTCIP_NOERROR;
+        }
+        child_node->fClearChildren();
+    }
+    else
+    {
+        if(error != nullptr)
+        {
+            *error = HNS_NTCIP_CHILDNOTFOUND;
+        }
+    }
 }
 
 void NTCIP_Node::fSetSetter(std::function<SNMP_PDU_Data(void *data, const int &data_size, const type_snmp_data_types &data_type, NTCIP_Node *sender, const bool &verify)> setter)
@@ -807,6 +928,7 @@ void NTCIP_Node::fSetData(const std::string &oid, const std::vector<unsigned cha
     {
         if(n == f_oid_number)
         {
+            std::vector<unsigned char> old_data = f_data;
             f_data.clear();
             for(size_t i = 0;i<data.size();i++)
             {

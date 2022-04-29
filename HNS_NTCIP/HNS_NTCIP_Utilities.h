@@ -9,6 +9,7 @@
 #include <graphics.h>
 
 int CountMessages(NTCIP_Node *ntcip, const NTCIP_MESSAGE::type_ntcip_message_memory_type &memory_type);
+int MaxMessages(NTCIP_Node *ntcip, const NTCIP_MESSAGE::type_ntcip_message_memory_type &memory_type);
 int CountGraphics(NTCIP_Node *ntcip);
 
 bool IsSecurity(const HNS_NTCIP_OID &oid);
@@ -17,6 +18,7 @@ uint16_t CalculateMessageCRC(const std::string &message, const uint8_t &beacon, 
 
 std::vector<unsigned char> GetBitmapDataStream(const HNS_Bitmap &bitmap, const NTCIP_GRAPHICS::type_ntcip_graphic_type &graphicType);
 
-void CorrectTree(NTCIP_Node *ntcip);
+std::string GetOIDName(const HNS_NTCIP_OID &oid);
+std::string GetOIDName(const std::string &oid);
 
 #endif // HNS_NTCIP_UTILITIES_H

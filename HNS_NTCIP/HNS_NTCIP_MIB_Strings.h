@@ -204,7 +204,7 @@ const std::string gk_defaultCharacterSet = gk_multiCfg + ".10.0";
 const std::string gk_dmsColorScheme = gk_multiCfg + ".11.0";
 const std::string gk_dmsSupportedMULTITags = gk_multiCfg + ".14.0";
 const std::string gk_dmsMaxNumberPages = gk_multiCfg + ".15.0";
-const std::string gk_dmsMaxSupportedLength = gk_multiCfg + ".16.0";
+const std::string gk_dmsMaxMultiStringLength = gk_multiCfg + ".16.0";
 //LV11
 const std::string gk_dmsMessage = gk_dms + ".5";
 //LV12

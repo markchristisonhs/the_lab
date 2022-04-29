@@ -29,14 +29,31 @@ typedef enum
 
 void SetLogALine_NTCIP_Node(HNS_LogALine2 *logaline);
 
+class NTCIP_Node;
+
 //This is utterly bizarre and deserves some explanation.  I know HNS_NTCIP_XML is in a different library.  However, doing this will
 //allow HNS_NTCIP_XML to be a friend of NTCIP_Node which it needs.  I just hope this works at link time.
 //Holy shit, this actually worked and links fine.
 class HNS_NTCIP_XML;
 
+class NTCIP_Node_Access
+{
+public:
+    NTCIP_Node_Access(NTCIP_Node *ntcip);
+
+    NTCIP_Node *fGetChild( const size_t &index);
+    NTCIP_Node *fGetChild( const std::string &oid, std::string *last_valid_oid = nullptr);
+    NTCIP_Node *fGetChildByName( const std::string &name);
+
+    NTCIP_Node *fGetNode();
+private:
+    NTCIP_Node *f_ntcip;
+};
+
 class NTCIP_Node
 {
     friend class HNS_NTCIP_XML;
+    friend class NTCIP_Node_Access;
 public:
     NTCIP_Node(NTCIP_Node *parent = nullptr);
     NTCIP_Node(const int &oid_number, NTCIP_Node *parent = nullptr);
@@ -48,6 +65,8 @@ public:
     ~NTCIP_Node();
 
     void fClone(const NTCIP_Node &clone_source, NTCIP_Node *parent = nullptr);
+
+    void fRememberSave();
 
     void fSetOidNumber(const int &oid_number);
     int fGetOidNumber();
@@ -100,8 +119,11 @@ public:
 
     type_ntcip_data_access fGetDataAccess() const;
 
+    bool fIsDirty() const;
+
     bool fGetBinaryMode() const;
     void fClearChildren();
+    void fClearChildren(const std::string &oid, type_ntcip_error *error = nullptr);
 
     void fSetSetter(std::function<SNMP_PDU_Data(void *data, const int &data_size, const type_snmp_data_types &data_type, NTCIP_Node *sender, const bool &verify)> setter);
     void fSetGetter(std::function<SNMP_PDU_Data(void *data, int &data_size, const type_snmp_data_types &data_type, NTCIP_Node *sender, const bool &verify)> getter);
@@ -127,6 +149,10 @@ private:
     bool f_binary_mode;
 
     std::string f_name;
+
+    bool f_isdirty;
+
+    std::vector<unsigned char> f_data_at_last_save;
 
     std::function<SNMP_PDU_Data(void *data, int &data_size, const type_snmp_data_types &data_type, NTCIP_Node *sender, const bool &verify)> f_getter;
     std::function<SNMP_PDU_Data(void *data, const int &data_size, const type_snmp_data_types &data_type, NTCIP_Node *sender, const bool &verify)> f_setter;

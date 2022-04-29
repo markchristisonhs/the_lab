@@ -40,8 +40,8 @@
    <widget class="QPushButton" name="PB_Test">
     <property name="geometry">
      <rect>
-      <x>400</x>
-      <y>120</y>
+      <x>120</x>
+      <y>100</y>
       <width>381</width>
       <height>151</height>
      </rect>
@@ -55,6 +55,24 @@
      <string>Press Me</string>
     </property>
    </widget>
+   <widget class="QPushButton" name="PB_Reload">
+    <property name="geometry">
+     <rect>
+      <x>590</x>
+      <y>100</y>
+      <width>381</width>
+      <height>151</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>32</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>Reload</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
@@ -62,7 +80,7 @@
      <x>0</x>
      <y>0</y>
      <width>1280</width>
-     <height>21</height>
+     <height>22</height>
     </rect>
    </property>
   </widget>

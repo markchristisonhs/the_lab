@@ -325,6 +325,26 @@ f_data(nullptr)
 	*this = copy;
 }
 
+void HNS_Character::fSetData(const HNS_Bitmap &data)
+{
+    bool *pix_data = nullptr;
+
+    if((data.fGetHeight() * data.fGetWidth()) > 0)
+    {
+        pix_data = new bool[data.fGetHeight() * data.fGetWidth()];
+
+        for(size_t uy = 0; uy < data.fGetHeight(); uy++)
+        {
+            for(size_t ux = 0; ux < data.fGetWidth();ux++)
+            {
+                pix_data[uy*data.fGetWidth() + ux] = !(data.fGetPixel(ux,uy) == HNS_Color(0,0,0));
+            }
+        }
+
+        fSetData(pix_data,data.fGetHeight()*data.fGetWidth(),data.fGetWidth(),data.fGetHeight());
+    }
+}
+
 void HNS_Character::fSetData(const std::vector<unsigned char> &data, const int &width, const int &height)
 {
     bool *result = new bool[width*height];
@@ -403,11 +423,11 @@ vector<unsigned char> HNS_Character::fGetNTCIPData() const
         temp_char = temp_char | (f_data[i] ? 0x1 : 0x0);
     }
     //don't forget any dangling bits!
-    if((i%8) != 0)
+    if(i%8 > 0)
     {
         temp_char = temp_char << (8 - (i%8));
-        result.push_back(temp_char);
     }
+    result.push_back(temp_char);
     return result;
 }
 

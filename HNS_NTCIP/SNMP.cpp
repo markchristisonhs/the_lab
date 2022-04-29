@@ -844,6 +844,65 @@ type_snmp_data_types SNMP_Data::fGetDataType() const
     return f_datatype;
 }
 
+string SNMP_Data::fGetDataTypeAsString() const
+{
+    string result = "unkown";
+
+    switch(f_datatype)
+    {
+    case SNMP_INTEGER:
+        result = "Integer";
+        break;
+    case SNMP_OCTET_STRING:
+        result = "Octet String";
+        break;
+    case SNMP_NULL_DATA:
+        result = "Null Data";
+        break;
+    case SNMP_OID:
+        result = "OID";
+        break;
+    case SNMP_SEQUENCE:
+        result = "Sequence";
+        break;
+    case SNMP_IP_ADDRESS:
+        result = "IP Address";
+        break;
+    case SNMP_COUNTER:
+        result = "Counter";
+        break;
+    case SNMP_GAUGE:
+        result = "Gauge";
+        break;
+    case SNMP_TIMETICKS:
+        result = "TimeTicks";
+        break;
+    case SNMP_OPAQUE:
+        result = "Opaque";
+        break;
+    case SNMP_COUNTER64:
+        result = "Counter64";
+        break;
+    case SNMP_PDU_GETREQUEST:
+        result = "unkown";
+        break;
+    case SNMP_PDU_GETNEXTREQUEST:
+        result = "unkown";
+        break;
+    case SNMN_PDU_GETRESPONSE:
+        result = "unkown";
+        break;
+    case SNMP_PDU_SETREQUEST:
+        result = "unkown";
+        break;
+    case SNMP_PDU_TRAP:
+        result = "unkown";
+        break;
+    }
+
+    return result;
+}
+
 std::vector<unsigned char> SNMP_Data::fGetData() const
 {
     return f_data;
@@ -876,18 +935,46 @@ void SNMP_Data::fLogData(HNS_LogALine2 *logaline)
 {
     stringstream ss;
     string caller = "SNMP_Data::fLogData";
+    bool octet_ok = false;
+    bool printable = true;
 
     if(logaline != nullptr)
     {
         ss.str("");
-        ss << "Data type is " << fGetDataType();
+        ss << "Data type is " << fGetDataTypeAsString();
         logaline->fLogALine(ss.str(),caller);
 
-        ss.str("");
-        ss << "Data is 0x"<< setfill('0') << setw(2) << hex;
-        for(size_t ui = 0; ui < f_data.size();ui++)
+        if(fGetDataType() != SNMP_NULL_DATA)
         {
-            ss << (unsigned)f_data[ui];
+            ss.str("");
+//            ss << "Data is 0x"<< setfill('0') << setw(2) << hex;
+            ss << "Data is ";
+            if(fGetDataType() == SNMP_OCTET_STRING)
+            {
+                for(size_t ui = 0; ui < f_data.size();ui++)
+                {
+                    if(isprint(f_data[ui]) == 0)
+                    {
+                        printable = false;
+                        break;
+                    }
+                }
+                if(printable)
+                {
+                    octet_ok = true;
+
+                    ss << string(f_data.begin(),f_data.end());
+                }
+            }
+            if(!octet_ok)
+            {
+                ss.str("");
+                ss << "0x"<< setfill('0') << setw(2) << hex;
+                for(size_t ui = 0; ui < f_data.size();ui++)
+                {
+                    ss << (unsigned)f_data[ui];
+                }
+            }
         }
         logaline->fLogALine(ss.str(),caller);
     }
@@ -1138,6 +1225,32 @@ type_pdu SNMP_PDU_Data::fGetPDUType() const
     return f_pdu_type;
 }
 
+string SNMP_PDU_Data::fGetPDUTypeAsString() const
+{
+    string result = "unkown";
+
+    switch(f_pdu_type)
+    {
+    case PDU_GETREQUEST:
+        result = "Get Request";
+        break;
+    case PDU_GETNEXTREQUEST:
+        result = "Get Next Request";
+        break;
+    case PDU_GETRESPONSE:
+        result = "Get Response";
+        break;
+    case PDU_SETREQUEST:
+        result = "Set Request";
+        break;
+    case PDU_TRAP:
+        result = "trap";
+        break;
+    }
+
+    return result;
+}
+
 int SNMP_PDU_Data::fGetRequestID() const
 {
     return f_request_id;
@@ -1183,7 +1296,7 @@ void SNMP_PDU_Data::fLogData(HNS_LogALine2 *logaline)
     if(logaline != nullptr)
     {
         ss.str("");
-        ss << "This PDU has a type of " << fGetPDUType() << ", a request ID of " << fGetRequestID() << ", error status of " << fGetErrorStatus() << ", error index of " << fGetErrorIndex() << ", and number of bindings: " << f_data.size();
+        ss << "This PDU has a type of " << fGetPDUTypeAsString() << ", a request ID of " << fGetRequestID() << ", error status of " << fGetErrorStatus() << ", error index of " << fGetErrorIndex() << ", and number of bindings: " << f_data.size();
         logaline->fLogALine(ss.str(),caller);
 
         for(size_t ui=0;ui<f_data.size();ui++)

@@ -70,6 +70,7 @@ public:
 	HNS_Character &operator=(const HNS_Character &rhs);
 
     //Sets data using a byte array
+    void fSetData(const HNS_Bitmap &data);
     void fSetData(const std::vector<unsigned char> &data, const int &width, const int &height);
     void fSetData(const bool *data, const long long &datasize, const int &width, const int &height);
     bool *fGetData() const;
