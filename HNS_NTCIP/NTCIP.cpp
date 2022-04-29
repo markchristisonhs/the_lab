@@ -76,7 +76,7 @@ NTCIP_Node::NTCIP_Node(NTCIP_Node *parent)
     f_access = HNS_NTCIP_READ;
     f_binary_mode = false;
     f_parent = parent;
-    f_isdirty = false;
+    f_is_nonvolatile = false;
 }
 
 NTCIP_Node::NTCIP_Node(const int &oid_number, NTCIP_Node *parent)
@@ -86,7 +86,7 @@ NTCIP_Node::NTCIP_Node(const int &oid_number, NTCIP_Node *parent)
     f_access = HNS_NTCIP_READ;
     f_binary_mode = false;
     f_parent = parent;
-    f_isdirty = false;
+    f_is_nonvolatile = false;
 }
 
 NTCIP_Node::NTCIP_Node(const NTCIP_Node &copy)
@@ -808,6 +808,16 @@ bool NTCIP_Node::fIsDirty() const
     }
 
     return result;
+}
+
+void NTCIP_Node::fSetNonVolatile()
+{
+
+}
+
+void NTCIP_Node::fClearNonVolatile()
+{
+
 }
 
 bool NTCIP_Node::fGetBinaryMode() const

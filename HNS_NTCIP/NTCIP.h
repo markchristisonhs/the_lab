@@ -120,6 +120,8 @@ public:
     type_ntcip_data_access fGetDataAccess() const;
 
     bool fIsDirty() const;
+    void fSetNonVolatile();
+    void fClearNonVolatile();
 
     bool fGetBinaryMode() const;
     void fClearChildren();
@@ -150,7 +152,7 @@ private:
 
     std::string f_name;
 
-    bool f_isdirty;
+    bool f_is_nonvolatile;
 
     std::vector<unsigned char> f_data_at_last_save;
 
