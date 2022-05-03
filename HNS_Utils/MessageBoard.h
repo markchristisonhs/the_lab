@@ -234,8 +234,12 @@ public:
 
     void fSetBoard(const HNS_Board &board);
     void fSetBoard(const HNS_Board &board, const size_t &index);
+    void fSetBoard(const HNS_Board &board, const size_t &board_x, const size_t &board_y);
     void fSetBoards(const std::vector<HNS_Board> &boards, const size_t &index);
+    bool fApplySubSignBoard(const HNS_SignBoard &signboard, const size_t &index);
+    bool fApplySubSignBoard(const HNS_SignBoard &signboard, const size_t &board_x, const size_t &board_y);
     HNS_Board fGetBoard(const size_t &index) const;
+    HNS_Board fGetBoard(const size_t &board_x, const size_t &board_y) const;
     std::vector<HNS_Board> fGetBoards() const;
     void fSetBoardsWide(const int &boards_wide);
     void fSetBoardsTall(const int &boards_tall);

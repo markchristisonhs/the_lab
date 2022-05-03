@@ -14,12 +14,12 @@ public:
 
     void fSetFile(const QString &file);
 
-    bool fParseNTCIPFile(NTCIP_Node *tree);
+    void fParseNTCIPFile(NTCIP_Node *tree);
 
     void fWriteNTCIPFile(NTCIP_Node *tree);
 private:
 
-    bool fGetNTCIPTree(QXmlStreamReader *xml, NTCIP_Node *tree, const QString &parent_oid);
+    void fGetNTCIPTree(QXmlStreamReader *xml, NTCIP_Node *tree, const QString &parent_oid);
 
     void fWriteNTCIPBranch(QXmlStreamWriter *xml, NTCIP_Node *tree);
     QString f_file;

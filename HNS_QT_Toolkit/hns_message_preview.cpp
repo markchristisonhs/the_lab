@@ -790,7 +790,6 @@ bool HNS_Message_Preview::fUpdate(const bool &refresh_pages, const bool &blank)
                 for(size_t ui = 0; ui < signboard.fGetNumBoards(); ui++)
                 {
                     temp_bitmap = signboard.fGetCharBoardBitmap(ui);
-                    f_images[ui] = ConvertHNS_BitmapToQImage(signboard.fGetCharBoardBitmap(ui),HNS_Color(255,255,255),QColor(255,172,39));
                 }
             }
         }

@@ -76,7 +76,6 @@ NTCIP_Node::NTCIP_Node(NTCIP_Node *parent)
     f_access = HNS_NTCIP_READ;
     f_binary_mode = false;
     f_parent = parent;
-    f_is_nonvolatile = false;
 }
 
 NTCIP_Node::NTCIP_Node(const int &oid_number, NTCIP_Node *parent)
@@ -86,7 +85,6 @@ NTCIP_Node::NTCIP_Node(const int &oid_number, NTCIP_Node *parent)
     f_access = HNS_NTCIP_READ;
     f_binary_mode = false;
     f_parent = parent;
-    f_is_nonvolatile = false;
 }
 
 NTCIP_Node::NTCIP_Node(const NTCIP_Node &copy)
@@ -125,21 +123,6 @@ void NTCIP_Node::fClone(const NTCIP_Node &clone_source, NTCIP_Node *parent)
     {
         f_children[i] = new NTCIP_Node();
         f_children[i]->fClone(*clone_source.f_children[i],this);
-    }
-}
-
-void NTCIP_Node::fRememberSave()
-{
-    if(fGetNumChildren() > 0)
-    {
-        for(size_t ui=0; ui<fGetNumChildren(); ui++)
-        {
-            f_children[ui]->fRememberSave();
-        }
-    }
-    else
-    {
-        f_data_at_last_save = f_data;
     }
 }
 
@@ -773,53 +756,6 @@ type_ntcip_data_access NTCIP_Node::fGetDataAccess() const
     return f_access;
 }
 
-bool NTCIP_Node::fIsDirty() const
-{
-    bool result = false;
-
-    if(fGetNumChildren() > 0)
-    {
-        for(size_t ui=0; ui<f_children.size(); ui++)
-        {
-            result = result || f_children[ui]->fIsDirty();
-            if(result)
-            {
-                break;
-            }
-        }
-    }
-    else
-    {
-        if(f_data.size() != f_data_at_last_save.size())
-        {
-            result = true;
-        }
-        else
-        {
-            for(size_t ui=0; ui<f_data.size();ui++)
-            {
-                result = result || (f_data[ui] != f_data_at_last_save[ui]);
-                if(result)
-                {
-                    break;
-                }
-            }
-        }
-    }
-
-    return result;
-}
-
-void NTCIP_Node::fSetNonVolatile()
-{
-
-}
-
-void NTCIP_Node::fClearNonVolatile()
-{
-
-}
-
 bool NTCIP_Node::fGetBinaryMode() const
 {
     return f_binary_mode;
@@ -938,7 +874,6 @@ void NTCIP_Node::fSetData(const std::string &oid, const std::vector<unsigned cha
     {
         if(n == f_oid_number)
         {
-            std::vector<unsigned char> old_data = f_data;
             f_data.clear();
             for(size_t i = 0;i<data.size();i++)
             {

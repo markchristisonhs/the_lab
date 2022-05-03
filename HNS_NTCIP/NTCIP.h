@@ -66,8 +66,6 @@ public:
 
     void fClone(const NTCIP_Node &clone_source, NTCIP_Node *parent = nullptr);
 
-    void fRememberSave();
-
     void fSetOidNumber(const int &oid_number);
     int fGetOidNumber();
 
@@ -119,10 +117,6 @@ public:
 
     type_ntcip_data_access fGetDataAccess() const;
 
-    bool fIsDirty() const;
-    void fSetNonVolatile();
-    void fClearNonVolatile();
-
     bool fGetBinaryMode() const;
     void fClearChildren();
     void fClearChildren(const std::string &oid, type_ntcip_error *error = nullptr);
@@ -151,10 +145,6 @@ private:
     bool f_binary_mode;
 
     std::string f_name;
-
-    bool f_is_nonvolatile;
-
-    std::vector<unsigned char> f_data_at_last_save;
 
     std::function<SNMP_PDU_Data(void *data, int &data_size, const type_snmp_data_types &data_type, NTCIP_Node *sender, const bool &verify)> f_getter;
     std::function<SNMP_PDU_Data(void *data, const int &data_size, const type_snmp_data_types &data_type, NTCIP_Node *sender, const bool &verify)> f_setter;

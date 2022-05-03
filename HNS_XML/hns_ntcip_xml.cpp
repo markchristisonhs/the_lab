@@ -16,9 +16,8 @@ void HNS_NTCIP_XML::fSetFile(const QString &file)
     f_file = file;
 }
 
-bool HNS_NTCIP_XML::fParseNTCIPFile(NTCIP_Node *tree)
+void HNS_NTCIP_XML::fParseNTCIPFile(NTCIP_Node *tree)
 {
-    bool success = true;
     QStringRef tempstring_ref;
     QFile file(f_file);
     QXmlStreamReader xml;
@@ -49,13 +48,11 @@ bool HNS_NTCIP_XML::fParseNTCIPFile(NTCIP_Node *tree)
                     test = xml.attributes();
                     version = xml.attributes().value("","HNS_version").toString();
                     ntcip_version = xml.attributes().value("","version").toString();
-                    success = success && fGetNTCIPTree(&xml,tree,"");
+                    fGetNTCIPTree(&xml,tree,"");
                 }
             }
         }while(!at_end);
     }
-
-    return success;
 }
 
 void HNS_NTCIP_XML::fWriteNTCIPFile(NTCIP_Node *tree)
@@ -80,9 +77,8 @@ void HNS_NTCIP_XML::fWriteNTCIPFile(NTCIP_Node *tree)
     }
 }
 
-bool HNS_NTCIP_XML::fGetNTCIPTree(QXmlStreamReader *xml, NTCIP_Node *tree, const QString &parent_oid)
+void HNS_NTCIP_XML::fGetNTCIPTree(QXmlStreamReader *xml, NTCIP_Node *tree, const QString &parent_oid)
 {
-    bool success = true;
     bool at_end = false;
     QString tempstring;
     QString end_tag;
@@ -103,7 +99,7 @@ bool HNS_NTCIP_XML::fGetNTCIPTree(QXmlStreamReader *xml, NTCIP_Node *tree, const
 
     do
     {
-        QXmlStreamReader::TokenType next_token = xml->readNext();
+        xml->readNext();
         //found a child
         if(xml->isStartElement() && xml->name() == "Node")
         {
@@ -198,15 +194,7 @@ bool HNS_NTCIP_XML::fGetNTCIPTree(QXmlStreamReader *xml, NTCIP_Node *tree, const
         {
             at_end = true;
         }
-        else if(next_token == QXmlStreamReader::Invalid)
-        {
-            //error condition
-            at_end = true;
-            success = false;
-        }
     }while(!at_end);
-
-    return success;
 }
 
 void HNS_NTCIP_XML::fWriteNTCIPBranch(QXmlStreamWriter *xml, NTCIP_Node *tree)

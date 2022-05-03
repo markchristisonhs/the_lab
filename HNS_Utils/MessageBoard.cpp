@@ -129,13 +129,24 @@ vector<int> HNS_SignBoard_Info::fGetSpecialData(const type_hns_signboard_special
 HNS_SignBoard_Info HNS_SignBoard_Info::fGetAdjustedBoardInfo() const
 {
     HNS_SignBoard_Info result;
-    size_t size;
+    size_t boards_wide, boards_high;
 
     if(fGetSpecial(HNS_SGNBRD_SPECIAL_DUAL_DISPLAY))
     {
-        size = f_boards_wide/2;
+        vector<int> special_data = fGetSpecialData(HNS_SGNBRD_SPECIAL_DUAL_DISPLAY);
+        if(special_data.size() >= 4)
+        {
+            boards_wide = special_data[2];
+            boards_high = special_data[3];
+        }
+        else
+        {
+            boards_wide = f_boards_wide/2;
+            boards_high = 1;
+        }
         result = *this;
-        result.fSetBoardsWide(size);
+        result.fSetBoardsWide(boards_wide);
+        result.fSetBoardsTall(boards_high);
     }
     else
     {
@@ -260,12 +271,49 @@ void HNS_SignBoard::fSetBoard(const HNS_Board &board, const size_t &index)
     }
 }
 
+void HNS_SignBoard::fSetBoard(const HNS_Board &board, const size_t &board_x, const size_t &board_y)
+{
+    size_t index = (board_y * fGetBoardsWide()) + board_x;
+    fSetBoard(board,index);
+}
+
 void HNS_SignBoard::fSetBoards(const std::vector<HNS_Board> &boards, const size_t &index)
 {
     for(size_t ui = 0;ui < boards.size(); ui++)
     {
         fSetBoard(boards[ui],index+ui);
     }
+}
+
+bool HNS_SignBoard::fApplySubSignBoard(const HNS_SignBoard &signboard, const size_t &index)
+{
+    size_t board_x, board_y;
+
+    board_x = index % fGetBoardsWide();
+    board_y = index / fGetBoardsWide();
+
+    return fApplySubSignBoard(signboard, board_x, board_y);
+}
+
+bool HNS_SignBoard::fApplySubSignBoard(const HNS_SignBoard &signboard, const size_t &board_x, const size_t &board_y)
+{
+    size_t max_x = board_x + signboard.fGetBoardsWide();
+    size_t max_y = board_y + signboard.fGetBoardsTall();
+
+    bool is_valid = !((max_x > fGetBoardsWide()) || (max_y > fGetBoardsTall()));
+
+    if(is_valid)
+    {
+        for(size_t y = 0; y < signboard.fGetBoardsTall(); y++)
+        {
+            for(size_t x = 0; x < signboard.fGetBoardsWide(); x++)
+            {
+                fSetBoard(signboard.fGetBoard(x,y),board_x+x,board_y+y);
+            }
+        }
+    }
+
+    return is_valid;
 }
 
 HNS_Board HNS_SignBoard::fGetBoard(const size_t &index) const
@@ -278,6 +326,12 @@ HNS_Board HNS_SignBoard::fGetBoard(const size_t &index) const
     }
 
     return result;
+}
+
+HNS_Board HNS_SignBoard::fGetBoard(const size_t &board_x, const size_t &board_y) const
+{
+    size_t index = (board_y * fGetBoardsWide()) + board_x;
+    return fGetBoard(index);
 }
 
 vector<HNS_Board> HNS_SignBoard::fGetBoards() const
