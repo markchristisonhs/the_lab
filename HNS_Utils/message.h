@@ -65,6 +65,21 @@ typedef enum
     HNS_MULTI_SYNTAX_ERROR_GRAPHICNOTDEFINED = 15
 } type_multi_syntax_error;
 
+typedef enum
+{
+    HNS_ACTIVATION_ERROR_OTHER = 1,
+    HNS_ACTIVATION_ERROR_NONE = 2,
+    HNS_ACTIVATION_ERROR_PRIORITY = 3,
+    HNS_ACTIVATION_ERROR_MESSAGE_STATUS = 4,
+    HNS_ACTIVATION_ERROR_MESSAGE_TYPE = 5,
+    HNS_ACTIVATION_ERROR_MESSAGE_NUMBER = 6,
+    HNS_ACTIVATION_ERROR_MESSAGE_CRC = 7,
+    HNS_ACTIVATION_ERROR_SYNTAXMULTI = 8,
+    HNS_ACTIVATION_ERROR_LOCAL_MODE = 9,
+    HNS_ACTIVATION_ERROR_CENTRAL_MODE = 10,
+    HNS_ACTIVATION_ERROR_CENTRAL_OVERRIDE_MODE = 11
+} type_activation_error;
+
 class HNS_Message_Element2;
 class HNS_Message;
 class HNS_Message_Page;
@@ -103,8 +118,8 @@ public:
     HNS_Message2();
     HNS_Message2(const HNS_SignBoard_Info &signboard_info);
 
-    int fSetMULTI(std::string &multi_string, const std::vector<HNS_Font> *fonts, const std::vector<HNS_Graphic> *graphics, const HNS_Field_Data *field_data, type_multi_syntax_error *multi_error = nullptr, bool *too_tall = nullptr);
-    std::string fGetMULTI();
+    int fSetMULTI(std::string &multi_string, const std::vector<HNS_Font> *fonts, const std::vector<HNS_Graphic> *graphics, const HNS_Field_Data *field_data, type_multi_syntax_error *multi_error = nullptr, bool *too_tall = nullptr, size_t max_num_pages = 3, int *error_position = nullptr);
+    std::string fGetMULTI() const;
     size_t fGetNumPages() const;
 
     type_justification_line fGetLastLineJustification(const size_t &page);
@@ -143,6 +158,9 @@ public:
 
     HNS_SignBoard fGetSignBoard(const int64_t &time, size_t *page_displayed = nullptr);
     HNS_Message_Page2 fGetPage(const size_t &page_no) const;
+
+    //returns which fonts are used by this message.
+    std::vector<int> fGetFontsUsed();
 private:
     void fAddPage(const double &page_time_on, const double &page_time_off);
     type_hns_signboard_error fAddElementToPage(HNS_Message_Element2 &element, const type_justification_line &line_justification, const type_justification_page &page_justification, const bool &newline = false, const ssize_t &line_spacing = -1);
@@ -184,6 +202,9 @@ public:
     type_justification_page fGetLastPageJustification();
 
     HNS_SignBoard fGetSignBoard(const int64_t &time = 0, const bool &preview_mode = false);
+
+    //Gets a list of all fonts used on this page
+    std::vector<int> fGetFontsUsed();
 private:
     //This function places all graphical elements on the end of the vector and also verifies that all justified elements are in logical order.
     //That is left,center,right for line and top,center,bottom for page.  Also remember that for each page justification no line justification
@@ -225,6 +246,9 @@ public:
     HNS_Point fGetGraphicPos() const;
     size_t fGetHeight() const;
     size_t fGetNumLines() const;
+
+    //Returns the fonts used in this element
+    std::vector<int> fGetFontsUsed();
 private:
     std::vector<size_t> fGetLineWidths() const;
     std::vector<size_t> fGetLineHeights() const;
@@ -310,10 +334,12 @@ public:
     HNS_Field_Data(const time_t &input_time, const int &speed, const int &temperature, const bool &kph = false, const bool &celsius = false);
 
     void fSetSpeed(const int &speed, const bool &kph = false);
+    void fSetRadarConnected(const bool &radar_connected);
     void fSetTemperature(const int &temperature, const bool &celsius = false);
     void fSetTime(const time_t &input_time);
 
     int fGetSpeed(const bool &kph = false) const;
+    bool fGetRadarConnected() const;
     int fGetTemperature(const bool &celsius = false) const;
     tm *fGetTime() const;
 
@@ -321,6 +347,7 @@ private:
     time_t f_current_time;
     //current speed in kph
     double f_speed;
+    bool f_radar_connected;
     //current exterior temperature in degrees C
     double f_temperature;
 };

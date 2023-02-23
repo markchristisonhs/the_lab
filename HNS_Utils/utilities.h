@@ -14,15 +14,16 @@
 
 //This function takes a string of numbers seperated by a delimiting character, and returns a vector of
 //numbers.  It assumes that there are only numbers between delimiters and gives an error if there are
-//non-numbers in the sequence
-std::vector<int> HNS_string_to_int_vector(const std::string &input, const char &delimiter, int &error);
+//non-numbers in the sequence.  At this time only supports bases 10 and 16.  That should be all that's
+//needed though.
+std::vector<int> HNS_string_to_int_vector(const std::string &input, const char &delimiter, int &error, const bool &is_hex = false);
 
 //This function is a simple Celsius to Fahrenheit converter
 double HNS_CtoF(const double &temperature);
 //This function is a simple Fahrenheit to Celsius converter
 double HNS_FtoC(const double &temperature);
 
-//Splits an int into a little endian byte array.  Assumes that int is 4 bytes
+//Splits an int into a big endian byte array (assuming that index 0 is MSB and 0 to size-1 is read left to right).  Assumes that int is 4 bytes
 std::vector<unsigned char> HNS_intToByteArray(const int &input);
 //Same as above for 8 bytes
 std::vector<unsigned char> HNS_int64ToByteArray(const int64_t &input);
@@ -47,5 +48,9 @@ int CompareDates(const tm &end_date, const tm &start_date);
 
 //same return as Compare Dates, but ignores date component
 int CompareTimes(const tm &end_time, const tm &start_time);
+
+//since vector<bool> doesn't always behave the same way across compilers, I have opted to use vector<unsigned char> with zero as false and non zero as true
+//I hope this gives more predictable behavior across compilers
+std::vector<unsigned char> BoolArray_to_ByteArray(const std::vector<unsigned char> &input);
 
 #endif /* SRC_UTILITIES_H_ */

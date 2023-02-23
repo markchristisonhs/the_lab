@@ -43,6 +43,11 @@ HNS_Character HNS_Font::fGetCharacter(const int &character_number) const
 	return f_null_character;
 }
 
+vector<HNS_Character> HNS_Font::fGetCharacters() const
+{
+    return f_characters;
+}
+
 size_t HNS_Font::fGetNumCharacters() const
 {
     return f_characters.size();
@@ -133,6 +138,13 @@ void HNS_Font::fRemoveCharacter(const int &character_number)
 			}
 		}
 	}
+}
+
+bool HNS_Font::fIsCharValid(const int &character_number) const
+{
+    HNS_Character temp_character = fGetCharacter(character_number);
+
+    return fGetCharacter(character_number) != f_null_character;
 }
 
 void HNS_Font::fSetFontNumber(const int &font_number)

@@ -14,6 +14,7 @@
 #include <sstream>
 #include <algorithm>
 #include <cmath>
+#include <iomanip>
 
 using namespace std;
 
@@ -46,6 +47,58 @@ bool IsFlashOn(const int64_t &time, const HNS_Flashing_Text &flash_info)
     }
 
     return isTextOn;
+}
+
+//Copy pasted from a blog post  Should remove all duplicates
+void remove(vector<int> &v)
+{
+    auto end = v.end();
+    for (auto it = v.begin(); it != end; ++it) {
+        end = remove(it + 1, end, *it);
+    }
+
+    v.erase(end, v.end());
+}
+
+vector<int> MergeFontsUsedLists(const vector<int> &font_list1, const vector<int> &font_list2)
+{
+    vector<int> result(font_list1.size()+font_list2.size(),0);
+
+    merge(font_list1.begin(),font_list1.end(),font_list2.begin(),font_list2.end(),result.begin());
+
+    remove(result);
+
+    return result;
+}
+
+vector<int> AddFontToFontUsedList(const vector<int> &font_list, const int &font_no)
+{
+    vector<int> result = font_list, temp_vec;
+
+    sort(result.begin(), result.end());
+
+    temp_vec = result;
+    if(result.empty())
+    {
+        result.insert(result.begin(), font_no);
+    }
+    else
+    {
+        for(size_t i=0;i<temp_vec.size();i++)
+        {
+            if(font_no < temp_vec[i])
+            {
+                result.insert(result.begin()+i, font_no);
+                break;
+            }
+            else if(font_no == result[i])
+            {
+                break;
+            }
+        }
+    }
+
+    return result;
 }
 
 enum
@@ -137,11 +190,12 @@ HNS_Message2::HNS_Message2(const HNS_SignBoard_Info &)
 
 }
 
-int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Font> *fonts, const std::vector<HNS_Graphic> *graphics, const HNS_Field_Data *field_data, type_multi_syntax_error *multi_error, bool *too_tall)
+int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Font> *fonts, const std::vector<HNS_Graphic> *graphics, const HNS_Field_Data *field_data, type_multi_syntax_error *multi_error, bool *too_tall, size_t max_num_pages, int *error_position)
 {
     type_multi_syntax_error my_error = HNS_MULTI_SYNTAX_ERROR_NONE;
     int error = HNS_MULTI_PARSER_NO_ERROR;
     int fsm_state = HNS_MULTI_PARSER_STATE_TEXT;
+    int error_pos = -1;
     string text;
     string temp_string;
     int itemp,itemp_x,itemp_y;
@@ -167,6 +221,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
     bool first;
     stringstream ss;
     tm *current_time = nullptr;
+    int hour = 12, minute = 30, day = 0, mday = 1, month = 0, year = 120;
 
     bool temp_too_tall = false;
     type_hns_signboard_error sign_brd_error = HNS_SGNBRD_ERROR_NONE;
@@ -176,6 +231,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
         fail = true;
         error = HNS_MULTI_PARSER_SYNTAX_ERROR;
         my_error = HNS_MULTI_SYNTAX_ERROR_FONTNOTDEFINED;
+        error_pos = 0;
     }
     else
     {
@@ -184,6 +240,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
             fail = true;
             error = HNS_MULTI_PARSER_SYNTAX_ERROR;
             my_error = HNS_MULTI_SYNTAX_ERROR_FONTNOTDEFINED;
+            error_pos = 0;
         }
     }
 
@@ -241,6 +298,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                             {
                                 error = HNS_MULTI_PARSER_SYNTAX_ERROR;
                                 my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                                error_pos = character - multi_string.begin() - 1;
                                 fail = true;
                             }
                         }
@@ -248,6 +306,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                         {
                             error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                             my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                            error_pos = character - multi_string.begin() - 1;
                             fail = true;
                         }
                     }
@@ -282,6 +341,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                         {
                             error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                             my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                            error_pos = character - multi_string.begin() - 1;
                             fail = true;
                         }
                     }
@@ -314,6 +374,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                         {
                             error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                             my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                            error_pos = character - multi_string.begin() - 1;
                             fail = true;
                         }
                     }
@@ -321,6 +382,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                     {
                         error = HNS_MULTI_PARSER_UNRECOGNIZED_TAG;
                         my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                        error_pos = character - multi_string.begin() - 1;
                         fail = true;
                     }
                 }
@@ -328,6 +390,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                 {
                     error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                     my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                    error_pos = character - multi_string.begin() - 1;
                     fail = true;
                 }
                 break;
@@ -351,6 +414,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                         {
                             error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                             my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                            error_pos = character - multi_string.begin() - 1;
                             fail = true;
                         }
                         if(!fail)
@@ -398,6 +462,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                                 }
                                                 error = HNS_MULTI_PARSER_SYNTAX_ERROR;
                                                 my_error = HNS_MULTI_SYNTAX_ERROR_TEXTTOOBIG;
+                                                error_pos = character - multi_string.begin() - 1;
                                                 fail = true;
                                             }
                                         }
@@ -453,6 +518,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                 {
                                     error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                                     my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                                    error_pos = character - multi_string.begin() - 1;
                                     fail = true;
                                 }
                             }
@@ -460,6 +526,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                             {
                                 error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                                 my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                                error_pos = character - multi_string.begin() - 1;
                                 fail = true;
                             }
                         }
@@ -504,6 +571,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                             }
                                             error = HNS_MULTI_PARSER_SYNTAX_ERROR;
                                             my_error = HNS_MULTI_SYNTAX_ERROR_TEXTTOOBIG;
+                                            error_pos = character - multi_string.begin() - 1;
                                             fail = true;
                                         }
                                     }
@@ -513,6 +581,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                     fail = true;
                                     error = HNS_MULTI_PARSER_SYNTAX_ERROR;
                                     my_error = HNS_MULTI_SYNTAX_ERROR_FONTNOTDEFINED;
+                                    error_pos = character - multi_string.begin() - 1;
                                 }
                                 else
                                 {
@@ -544,6 +613,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                             }
                                             error = HNS_MULTI_PARSER_SYNTAX_ERROR;
                                             my_error = HNS_MULTI_SYNTAX_ERROR_TEXTTOOBIG;
+                                            error_pos = character - multi_string.begin() - 1;
                                             fail = true;
                                         }
                                     }
@@ -553,6 +623,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                     fail = true;
                                     error = HNS_MULTI_PARSER_SYNTAX_ERROR;
                                     my_error = HNS_MULTI_SYNTAX_ERROR_FONTNOTDEFINED;
+                                    error_pos = character - multi_string.begin() - 1;
                                 }
                                 else
                                 {
@@ -564,6 +635,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                             {
                                 error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                                 my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                                error_pos = character - multi_string.begin() - 1;
                                 fail = true;
                             }
                         }
@@ -571,6 +643,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                         {
                             error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                             my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                            error_pos = character - multi_string.begin() - 1;
                             fail = true;
                         }
                     }
@@ -621,13 +694,16 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                     if(field_data != nullptr)
                                     {
                                         current_time = field_data->fGetTime();
+                                        hour = current_time->tm_hour;
+                                        minute = current_time->tm_min;
+
                                     }
                                     else
                                     {
-                                        current_time->tm_hour = 12;
-                                        current_time->tm_min = 30;
+                                        hour = 12;
+                                        minute = 30;
                                     }
-                                    ss << Conv24Hto12HTime(current_time->tm_hour) << ":" << current_time->tm_min;
+                                    ss << Conv24Hto12HTime(hour) << ":" << std::setw(2) << std::setfill('0') << minute;
                                     text += ss.str();
                                     break;
                                 //24 hour time
@@ -639,13 +715,15 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                     if(field_data != nullptr)
                                     {
                                         current_time = field_data->fGetTime();
+                                        hour = current_time->tm_hour;
+                                        minute = current_time->tm_min;
                                     }
                                     else
                                     {
-                                        current_time->tm_hour = 12;
-                                        current_time->tm_min = 30;
+                                        hour = 12;
+                                        minute = 30;
                                     }
-                                    ss << current_time->tm_hour << ":" << current_time->tm_min;
+                                    ss << hour << ":" << std::setw(2) << std::setfill('0') << minute;
                                     text += ss.str();
                                     break;
                                 //temperature in C
@@ -696,7 +774,22 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                     {
                                         itemp = 85;
                                     }
-                                    ss << itemp;
+
+                                    if(field_data != nullptr)
+                                    {
+                                        if(field_data->fGetRadarConnected())
+                                        {
+                                            ss << itemp;
+                                        }
+                                        else
+                                        {
+                                            ss << "???";
+                                        }
+                                    }
+                                    else
+                                    {
+                                        ss << itemp;
+                                    }
                                     text += ss.str();
                                     break;
                                 //speed in mph
@@ -713,7 +806,22 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                     {
                                         itemp = 55;
                                     }
-                                    ss << itemp;
+
+                                    if(field_data != nullptr)
+                                    {
+                                        if(field_data->fGetRadarConnected())
+                                        {
+                                            ss << itemp;
+                                        }
+                                        else
+                                        {
+                                            ss << "???";
+                                        }
+                                    }
+                                    else
+                                    {
+                                        ss << itemp;
+                                    }
                                     text += ss.str();
                                     break;
                                 //day of week
@@ -725,12 +833,13 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                     if(field_data != nullptr)
                                     {
                                         current_time = field_data->fGetTime();
+                                        day = current_time->tm_wday;
                                     }
                                     else
                                     {
-                                        current_time->tm_wday = 0;
+                                        day = 0;
                                     }
-                                    switch(current_time->tm_wday)
+                                    switch(day)
                                     {
                                     case 0:
                                         text += "SUN";
@@ -765,12 +874,13 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                     if(field_data != nullptr)
                                     {
                                         current_time = field_data->fGetTime();
+                                        mday = current_time->tm_mday;
                                     }
                                     else
                                     {
-                                        current_time->tm_mday = 12;
+                                        mday = 12;
                                     }
-                                    ss << current_time->tm_mday;
+                                    ss << mday;
                                     text += ss.str();
                                     break;
                                 //month of year
@@ -782,12 +892,13 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                     if(field_data != nullptr)
                                     {
                                         current_time = field_data->fGetTime();
+                                        month = current_time->tm_mon;
                                     }
                                     else
                                     {
-                                        current_time->tm_mon = 0;
+                                        month = 0;
                                     }
-                                    ss << current_time->tm_mon+1;
+                                    ss << month+1;
                                     text += ss.str();
                                     break;
                                 //Year in 2 digits
@@ -799,12 +910,13 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                     if(field_data != nullptr)
                                     {
                                         current_time = field_data->fGetTime();
+                                        year = current_time->tm_year;
                                     }
                                     else
                                     {
-                                        current_time->tm_year = 120;
+                                        year = 120;
                                     }
-                                    ss << current_time->tm_year % 100;
+                                    ss << year % 100;
                                     text += ss.str();
                                     break;
                                 //year in 4 digits
@@ -816,12 +928,13 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                     if(field_data != nullptr)
                                     {
                                         current_time = field_data->fGetTime();
+                                        year = current_time->tm_year;
                                     }
                                     else
                                     {
-                                        current_time->tm_mon = 120;
+                                        year = 120;
                                     }
-                                    ss << current_time->tm_year + 1900;
+                                    ss << year + 1900;
                                     text += ss.str();
                                     break;
                                 //12 hour time with AM/PM
@@ -833,13 +946,15 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                     if(field_data != nullptr)
                                     {
                                         current_time = field_data->fGetTime();
+                                        hour = current_time->tm_hour;
+                                        minute = current_time->tm_min;
                                     }
                                     else
                                     {
-                                        current_time->tm_hour = 12;
-                                        current_time->tm_min = 30;
+                                        hour = 12;
+                                        minute = 30;
                                     }
-                                    ss << Conv24Hto12HTime(current_time->tm_hour, &am_pm) << ":" << current_time->tm_min;
+                                    ss << Conv24Hto12HTime(hour, &am_pm) << ":" << std::setw(2) << std::setfill('0') << minute;
                                     ss << (am_pm ? "PM" : "AM");
                                     text += ss.str();
                                     break;
@@ -852,13 +967,15 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                     if(field_data != nullptr)
                                     {
                                         current_time = field_data->fGetTime();
+                                        hour = current_time->tm_hour;
+                                        minute = current_time->tm_min;
                                     }
                                     else
                                     {
-                                        current_time->tm_hour = 12;
-                                        current_time->tm_min = 30;
+                                        hour = 12;
+                                        minute = 30;
                                     }
-                                    ss << Conv24Hto12HTime(current_time->tm_hour, &am_pm) << ":" << current_time->tm_min;
+                                    ss << Conv24Hto12HTime(hour, &am_pm) << ":" << std::setw(2) << std::setfill('0') << minute;
                                     ss << (am_pm ? "pm" : "am");
                                     text += ss.str();
                                     break;
@@ -871,6 +988,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                             {
                                 error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                                 my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                                error_pos = character - multi_string.begin() - 1;
                                 fail = true;
                             }
                         }
@@ -878,6 +996,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                         {
                             error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                             my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                            error_pos = character - multi_string.begin() - 1;
                             fail = true;
                         }
                     }
@@ -885,6 +1004,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                     {
                         error = HNS_MULTI_PARSER_UNRECOGNIZED_TAG;
                         my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                        error_pos = character - multi_string.begin() - 1;
                         fail = true;
                     }
                 }
@@ -892,6 +1012,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                 {
                     error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                     my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                    error_pos = character - multi_string.begin() - 1;
                     fail = true;
                 }
                 break;
@@ -913,6 +1034,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                     {
                         error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                         my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                        error_pos = character - multi_string.begin() - 1;
                         fail = true;
                     }
 
@@ -940,6 +1062,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                     }
                                     error = HNS_MULTI_PARSER_SYNTAX_ERROR;
                                     my_error = HNS_MULTI_SYNTAX_ERROR_TEXTTOOBIG;
+                                    error_pos = character - multi_string.begin() - 1;
                                     fail = true;
                                 }
                             }
@@ -960,6 +1083,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                         {
                             error = HNS_MULTI_PARSER_UNDEFINED_GRAPHIC;
                             my_error = HNS_MULTI_SYNTAX_ERROR_GRAPHICNOTDEFINED;
+                            error_pos = character - multi_string.begin() - 1;
                             fail = true;
                         }
                         else
@@ -990,6 +1114,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                     }
                                     error = HNS_MULTI_PARSER_SYNTAX_ERROR;
                                     my_error = HNS_MULTI_SYNTAX_ERROR_TEXTTOOBIG;
+                                    error_pos = character - multi_string.begin() - 1;
                                     fail = true;
                                 }
                             }
@@ -1010,30 +1135,52 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                         do
                         {
                             ++character;
-                            if(isdigit(*character))
+                            if(isxdigit(*character))
                             {
                                 temp_string += *character;
                             }
-                        }while((isdigit(*character)) && character != multi_string.end());
+                        }while((isxdigit(*character)) && character != multi_string.end());
 
                         if(toupper(*character) == ']')
                         {
-                            numbers = HNS_string_to_int_vector(temp_string,',',temp_error);
+                            numbers = HNS_string_to_int_vector(temp_string,',',temp_error,true);
                             if(numbers.size() == 1)
                             {
-                                text += static_cast<char>(numbers[0]);
+                                if(fonts->at(current_font-1).fIsCharValid(numbers[0]))
+                                {
+                                    text += static_cast<char>(numbers[0]);
+                                }
+                                else
+                                {
+                                    error = HNS_MULTI_PARSER_SYNTAX_ERROR;
+                                    my_error = HNS_MULTI_SYNTAX_ERROR_CHARACTERNOTDEFINED;
+                                    error_pos = character - multi_string.begin() - 1;
+                                    fail = true;
+                                }
                             }
                             else
                             {
                                 error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                                my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                                error_pos = character - multi_string.begin() - 1;
                                 fail = true;
                             }
                         }
+                        else
+                        {
+                            error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                            my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                            error_pos = character - multi_string.begin() - 1;
+                            fail = true;
+                        }
+
+                        fsm_state = HNS_MULTI_PARSER_STATE_TEXT;
                     }
                     else
                     {
                         error = HNS_MULTI_PARSER_UNRECOGNIZED_TAG;
                         my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                        error_pos = character - multi_string.begin() - 1;
                         fail = true;
                     }
                 }
@@ -1079,6 +1226,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                             }
                                             error = HNS_MULTI_PARSER_SYNTAX_ERROR;
                                             my_error = HNS_MULTI_SYNTAX_ERROR_TEXTTOOBIG;
+                                            error_pos = character - multi_string.begin() - 1;
                                             fail = true;
                                         }
                                     }
@@ -1109,6 +1257,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                             {
                                 error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                                 my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                                error_pos = character - multi_string.begin() - 1;
                                 fail = true;
                             }
                         }
@@ -1163,6 +1312,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                             {
                                 error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                                 my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                                error_pos = character - multi_string.begin() - 1;
                                 fail = true;
                             }
                         }
@@ -1171,6 +1321,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                     {
                         error = HNS_MULTI_PARSER_UNRECOGNIZED_TAG;
                         my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                        error_pos = character - multi_string.begin() - 1;
                         fail = true;
                     }
                 }
@@ -1178,6 +1329,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                 {
                     error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                     my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                    error_pos = character - multi_string.begin() - 1;
                     fail = true;
                 }
                 break;
@@ -1235,6 +1387,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                         }
                                         error = HNS_MULTI_PARSER_SYNTAX_ERROR;
                                         my_error = HNS_MULTI_SYNTAX_ERROR_TEXTTOOBIG;
+                                        error_pos = character - multi_string.begin() - 1;
                                         fail = true;
                                     }
                                 }
@@ -1243,6 +1396,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                             {
                                 error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                                 my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                                error_pos = character - multi_string.begin() - 1;
                                 fail = true;
                             }
                         }
@@ -1250,6 +1404,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                         {
                             error = HNS_MULTI_PARSER_SYNTAX_ERROR;
                             my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                            error_pos = character - multi_string.begin() - 1;
                             fail = true;
                         }
                     }
@@ -1280,11 +1435,21 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                     }
                                     error = HNS_MULTI_PARSER_SYNTAX_ERROR;
                                     my_error = HNS_MULTI_SYNTAX_ERROR_TEXTTOOBIG;
+                                    error_pos = character - multi_string.begin() - 1;
                                     fail = true;
                                 }
                             }
-
-                            fAddPage(current_time_on,current_time_off);
+                            if(f_pages.size() < max_num_pages)
+                            {
+                                fAddPage(current_time_on,current_time_off);
+                            }
+                            else
+                            {
+                                error = HNS_MULTI_PARSER_SYNTAX_ERROR;
+                                my_error = HNS_MULTI_SYNTAX_ERROR_TOOMANYPAGES;
+                                error_pos = character - multi_string.begin() - 1;
+                                fail = true;
+                            }
 
                             fsm_state = HNS_MULTI_PARSER_STATE_TEXT;
                         }
@@ -1292,6 +1457,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                         {
                             error = HNS_MULTI_PARSER_SYNTAX_ERROR;
                             my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                            error_pos = character - multi_string.begin() - 1;
                             fail = true;
                         }
                     }
@@ -1299,6 +1465,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                     {
                         error = HNS_MULTI_PARSER_UNRECOGNIZED_TAG;
                         my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                        error_pos = character - multi_string.begin() - 1;
                         fail = true;
                     }
                 }
@@ -1306,6 +1473,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                 {
                     error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                     my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                    error_pos = character - multi_string.begin() - 1;
                     fail = true;
                 }
                 break;
@@ -1360,6 +1528,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                             {
                                 error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                                 my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                                error_pos = character - multi_string.begin() - 1;
                                 fail = true;
                             }
                             f_pages[f_pages.size()-1].fPageTimeOn() = current_time_on;
@@ -1369,6 +1538,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                         {
                             error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                             my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                            error_pos = character - multi_string.begin() - 1;
                             fail = true;
                         }
                     }
@@ -1376,6 +1546,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                     {
                         error = HNS_MULTI_PARSER_UNRECOGNIZED_TAG;
                         my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                        error_pos = character - multi_string.begin() - 1;
                         fail = true;
                     }
                 }
@@ -1383,6 +1554,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                 {
                     error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                     my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                    error_pos = character - multi_string.begin() - 1;
                     fail = true;
                 }
                 break;
@@ -1427,6 +1599,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                             }
                                             error = HNS_MULTI_PARSER_SYNTAX_ERROR;
                                             my_error = HNS_MULTI_SYNTAX_ERROR_TEXTTOOBIG;
+                                            error_pos = character - multi_string.begin() - 1;
                                             fail = true;
                                         }
                                     }
@@ -1439,6 +1612,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                             {
                                 error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                                 my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                                error_pos = character - multi_string.begin() - 1;
                                 fail = true;
                             }
                         }
@@ -1446,6 +1620,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                         {
                             error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                             my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                            error_pos = character - multi_string.begin() - 1;
                             fail = true;
                         }
                     }
@@ -1453,6 +1628,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                     {
                         error = HNS_MULTI_PARSER_UNRECOGNIZED_TAG;
                         my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                        error_pos = character - multi_string.begin() - 1;
                         fail = true;
                     }
                 }
@@ -1460,6 +1636,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                 {
                     error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                     my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                    error_pos = character - multi_string.begin() - 1;
                     fail = true;
                 }
                 break;
@@ -1502,6 +1679,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                                         temp_too_tall = true;
                                                     } error = HNS_MULTI_PARSER_SYNTAX_ERROR;
                                                     my_error = HNS_MULTI_SYNTAX_ERROR_TEXTTOOBIG;
+                                                    error_pos = character - multi_string.begin() - 1;
                                                     fail = true;
                                                 }
                                             }
@@ -1514,6 +1692,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                     {
                                         error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                                         my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                                        error_pos = character - multi_string.begin() - 1;
                                         fail = true;
                                     }
                                 }
@@ -1521,6 +1700,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                 {
                                     error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                                     my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                                    error_pos = character - multi_string.begin() - 1;
                                     fail = true;
                                 }
                             }
@@ -1528,6 +1708,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                             {
                                 error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                                 my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                                error_pos = character - multi_string.begin() - 1;
                                 fail = true;
                             }
                         }
@@ -1535,6 +1716,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                         {
                             error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                             my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                            error_pos = character - multi_string.begin() - 1;
                             fail = true;
                         }
                         break;
@@ -1570,6 +1752,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                                     }
                                                     error = HNS_MULTI_PARSER_SYNTAX_ERROR;
                                                     my_error = HNS_MULTI_SYNTAX_ERROR_TEXTTOOBIG;
+                                                    error_pos = character - multi_string.begin() - 1;
                                                     fail = true;
                                                 }
                                             }
@@ -1582,6 +1765,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                     {
                                         error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                                         my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                                        error_pos = character - multi_string.begin() - 1;
                                         fail = true;
                                     }
                                 }
@@ -1589,6 +1773,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                 {
                                     error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                                     my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                                    error_pos = character - multi_string.begin() - 1;
                                     fail = true;
                                 }
                             }
@@ -1596,6 +1781,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                             {
                                 error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                                 my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                                error_pos = character - multi_string.begin() - 1;
                                 fail = true;
                             }
                         }
@@ -1603,6 +1789,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                         {
                             error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
                             my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                            error_pos = character - multi_string.begin() - 1;
                             fail = true;
                         }
                         break;
@@ -1614,6 +1801,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                 {
                     error = HNS_MULTI_PARSER_UNRECOGNIZED_TAG;
                     my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                    error_pos = character - multi_string.begin() - 1;
                     fail = true;
                 }
 
@@ -1625,6 +1813,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
             default:
                 error = HNS_MULTI_PARSER_UNRECOGNIZED_TAG;
                 my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                error_pos = character - multi_string.begin() - 1;
                 fail = true;
                 break;
             }
@@ -1639,6 +1828,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
             {
                 error = HNS_MULTI_PARSER_UNEXPECTED_CLOSING_BRACE;
                 my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                error_pos = character - multi_string.begin() - 1;
                 fail = true;
             }
             break;
@@ -1666,6 +1856,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                 }
                 error = HNS_MULTI_PARSER_SYNTAX_ERROR;
                 my_error = HNS_MULTI_SYNTAX_ERROR_TEXTTOOBIG;
+                error_pos = multi_string.length()-1;
                 fail = true;
             }
         }
@@ -1680,10 +1871,15 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
     {
         *multi_error = my_error;
     }
+
+    if(error_position != nullptr)
+    {
+        *error_position = error_pos;
+    }
     return error;
 }
 
-std::string HNS_Message2::fGetMULTI()
+std::string HNS_Message2::fGetMULTI() const
 {
     return f_multi;
 }
@@ -1778,10 +1974,15 @@ void HNS_Message2::fSetFontTest(const std::vector<HNS_Font> *fonts, const size_t
     string multi;
     char temp_char = 'A';
     string tempstring;
-    HNS_Font tempfont = fonts->at(font_no-1);
+    HNS_Font tempfont;
     bool first_line = true;
     stringstream ss;
     size_t test = 0;
+
+    if(font_no-1 < fonts->size())
+    {
+        tempfont = fonts->at(font_no-1);
+    }
 
     ss << "[fo" << font_no << "]";
 
@@ -1978,6 +2179,19 @@ HNS_Message_Page2 HNS_Message2::fGetPage(const size_t &page_no) const
     }
 }
 
+vector<int> HNS_Message2::fGetFontsUsed()
+{
+    vector<int> result,temp_vec;
+
+    for(size_t i=0;i<f_pages.size();i++)
+    {
+        temp_vec = f_pages[i].fGetFontsUsed();
+        result = MergeFontsUsedLists(result,temp_vec);
+    }
+
+    return result;
+}
+
 void HNS_Message2::fSetJustification(const type_justification_line &line_justification, const type_justification_page &page_justification)
 {
     if(f_pages.size() > 0)
@@ -2157,6 +2371,19 @@ HNS_SignBoard HNS_Message_Page2::fGetSignBoard(const int64_t &time, const bool &
     return result;
 }
 
+vector<int> HNS_Message_Page2::fGetFontsUsed()
+{
+    vector<int> result,temp_vec;
+
+    for(size_t i=0;i<f_elements.size();i++)
+    {
+        temp_vec = f_elements[i].fGetFontsUsed();
+        result = MergeFontsUsedLists(result,temp_vec);
+    }
+
+    return result;
+}
+
 bool HNS_Message_Page2::fSortElements()
 {
     bool success = true;
@@ -2312,6 +2539,8 @@ HNS_Bitmap HNS_Message_Justified_Element::fGetBitmap(const vector<HNS_Font> *fon
                     //shouldn't ever get here
                     break;
                 }
+
+                line = f_elements[i].fGetLineNo();
             }
             else
             {
@@ -2495,7 +2724,10 @@ vector<size_t> HNS_Message_Justified_Element::fGetLineWidths() const
         {
             if(i != 0)
             {
-                current_width += f_elements[i].fGetCharSpacing();
+                if(f_elements[i].fGetWidth() > 0)
+                {
+                    current_width += f_elements[i].fGetCharSpacing();
+                }
             }
             current_width = current_width + f_elements[i].fGetWidth();
         }
@@ -2628,6 +2860,21 @@ size_t HNS_Message_Justified_Element::fGetNumLines() const
     }
 
     return num_lines;
+}
+
+vector<int> HNS_Message_Justified_Element::fGetFontsUsed()
+{
+    vector<int> result;
+
+    for(size_t i=0;i<f_elements.size();i++)
+    {
+        if(!f_elements[i].fIsGraphic())
+        {
+            result = AddFontToFontUsedList(result,f_elements[i].fGetFontNo());
+        }
+    }
+
+    return result;
 }
 
 size_t HNS_Message_Justified_Element::fGetYPos(const std::vector<size_t> &line_heights, const size_t &line_index) const
@@ -2773,10 +3020,13 @@ size_t HNS_Message_Element2::fGetCharacterWidth(const vector<HNS_Font> *fonts) c
 {
     HNS_Character temp_character;
     size_t result = 0;
-    for(size_t i=0;i<f_text.size();i++)
+    if(static_cast<size_t>(f_font_no-1) < fonts->size())
     {
-        temp_character = fonts->at(f_font_no-1).fGetCharacter(f_text[i]);
-        result += temp_character.fGetWidth();
+        for(size_t i=0;i<f_text.size();i++)
+        {
+            temp_character = fonts->at(f_font_no-1).fGetCharacter(f_text[i]);
+            result += temp_character.fGetWidth();
+        }
     }
     return result;
 }
@@ -2813,12 +3063,15 @@ HNS_Bitmap HNS_Message_Element2::fGetBitmap(const vector<HNS_Font> *fonts, const
     }
     else if(fonts != nullptr)
     {
-        for(size_t i=0;i<f_text.size();i++)
+        if(static_cast<size_t>(f_font_no-1) < fonts->size())
         {
-            temp_character = fonts->at(f_font_no-1).fGetCharacter(f_text[i]);
-            if(temp_character != HNS_Font::f_null_character)
+            for(size_t i=0;i<f_text.size();i++)
             {
-                result.fAddCharacter(temp_character,f_char_spacing);
+                temp_character = fonts->at(f_font_no-1).fGetCharacter(f_text[i]);
+                if(temp_character != HNS_Font::f_null_character)
+                {
+                    result.fAddCharacter(temp_character,f_char_spacing);
+                }
             }
         }
     }
@@ -2835,9 +3088,12 @@ HNS_Bitmap HNS_Message_Element2::fGetBitmapFixedWidth(const std::vector<HNS_Font
     size_t spacing, spacing_remainder;
     size_t temp_spacing;
 
-    for(size_t i=0;i<f_text.size();i++)
+    if(static_cast<size_t>(f_font_no-1) < fonts->size())
     {
-        character_width += fonts->at(f_font_no-1).fGetCharacter(f_text[i]).fGetWidth();
+        for(size_t i=0;i<f_text.size();i++)
+        {
+            character_width += fonts->at(f_font_no-1).fGetCharacter(f_text[i]).fGetWidth();
+        }
     }
 
     if((character_width + (f_text.size()-1)) > fixed_width)
@@ -2857,18 +3113,21 @@ HNS_Bitmap HNS_Message_Element2::fGetBitmapFixedWidth(const std::vector<HNS_Font
         spacing_remainder = 0;
     }
 
-    for(size_t i=0;i<f_text.size();i++)
+    if(static_cast<size_t>(f_font_no-1) < fonts->size())
     {
-        temp_character = fonts->at(f_font_no-1).fGetCharacter(f_text[i]);
-        if(temp_character != HNS_Font::f_null_character)
+        for(size_t i=0;i<f_text.size();i++)
         {
-            temp_spacing = spacing;
-            if(spacing_remainder > 0)
+            temp_character = fonts->at(f_font_no-1).fGetCharacter(f_text[i]);
+            if(temp_character != HNS_Font::f_null_character)
             {
-                temp_spacing++;
-                spacing_remainder--;
+                temp_spacing = spacing;
+                if(spacing_remainder > 0)
+                {
+                    temp_spacing++;
+                    spacing_remainder--;
+                }
+                result.fAddCharacter(temp_character,temp_spacing);
             }
-            result.fAddCharacter(temp_character,temp_spacing);
         }
     }
     f_width = result.fGetWidth();
@@ -2880,13 +3139,15 @@ HNS_Bitmap HNS_Message_Element2::fGetBitmapFixedWidth(const std::vector<HNS_Font
 HNS_Field_Data::HNS_Field_Data():
     f_current_time(1),
     f_speed(90),
+    f_radar_connected(false),
     f_temperature(27)
 {
 
 }
 
 HNS_Field_Data::HNS_Field_Data(const time_t &input_time, const int &speed, const int &temperature, const bool &kph, const bool &celsius):
-    f_current_time(input_time)
+    f_current_time(input_time),
+    f_radar_connected(false)
 {
     fSetSpeed(speed,kph);
     fSetTemperature(temperature,celsius);
@@ -2902,6 +3163,11 @@ void HNS_Field_Data::fSetSpeed(const int &speed, const bool &kph)
     {
         f_speed = static_cast<double>(speed) / 0.621371;
     }
+}
+
+void HNS_Field_Data::fSetRadarConnected(const bool &radar_connected)
+{
+    f_radar_connected = radar_connected;
 }
 
 void HNS_Field_Data::fSetTemperature(const int &temperature, const bool &celsius)
@@ -2931,6 +3197,11 @@ int HNS_Field_Data::fGetSpeed(const bool &kph) const
     {
         return static_cast<int>(round(f_speed * 0.621371));
     }
+}
+
+bool HNS_Field_Data::fGetRadarConnected() const
+{
+    return f_radar_connected;
 }
 
 int HNS_Field_Data::fGetTemperature(const bool &celsius) const

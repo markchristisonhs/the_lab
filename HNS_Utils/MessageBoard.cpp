@@ -871,11 +871,14 @@ void HNS_SignBoard::fAddPixelOut(const size_t &board, const size_t &byte, const 
     }
 }
 
-void HNS_SignBoard::fClearPixelOut()
+void HNS_SignBoard::fClearPixelOut(const bool &reset_state)
 {
     for(size_t ui=0;ui<f_boards.size();ui++)
     {
-        f_boards[ui].fSetPixelOutState(HNS_PIX_OUT_FOUND);
+        if(reset_state)
+        {
+            f_boards[ui].fSetPixelOutState(HNS_PIX_OUT_FOUND);
+        }
         f_boards[ui].fClearPixelsOut();
     }
 }
@@ -896,6 +899,46 @@ type_hns_pix_out_state HNS_SignBoard::fGetPixelOutState(const size_t &board) con
         return f_boards[board].fGetPixelOutState();
     }
     return HNS_PIX_OUT_FOUND;
+}
+
+vector< vector<int> > HNS_SignBoard::fGetPixelsOutXY() const
+{
+    vector<HNS_PixelOut> pix_out;
+    vector<int> temp_vec;
+    vector< vector<int> > result;
+    int temp_x, temp_y;
+    int board_row, board_col;
+    for(size_t ui=0;ui<f_boards.size();ui++)
+    {
+        pix_out = f_boards[ui].fGetPixelsOut();
+
+        for(size_t uj=0;uj<pix_out.size();uj++)
+        {
+            board_row = ui / fGetBoardsWide();
+            board_col = ui % fGetBoardsWide();
+
+            if(f_signboard_info.fGetOrientation() == HNS_BRD_ORIENTATION_BYTES_HORIZONTAL)
+            {
+                temp_x = pix_out[uj].fLED();
+                temp_y = pix_out[uj].fByte();
+
+                temp_x = (board_col * fGetLedsPerByte()) + temp_x;
+                temp_y = (board_row * fGetNumBytes()) + temp_y;
+            }
+            else
+            {
+                temp_x = pix_out[uj].fByte();
+                temp_y = f_boards[ui].fGetLedsPerByte() - pix_out[uj].fLED() - 1;
+
+                temp_x = (board_col * fGetNumBytes()) + temp_x;
+                temp_y = (board_row * fGetLedsPerByte()) + temp_y;
+            }
+
+            temp_vec = {temp_x, temp_y};
+            result.push_back(temp_vec);
+        }
+    }
+    return result;
 }
 
 void HNS_SignBoard::fSetPixelOutState(const type_hns_pix_out_state &state, const size_t &board)

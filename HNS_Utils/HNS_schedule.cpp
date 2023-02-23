@@ -245,6 +245,23 @@ void HNS_Schedule::fGetMessage(HNS_Message2 &message) const
     message = f_scheduled_message;
 }
 
+void HNS_Schedule::fSetStartNow(const bool &startNow)
+{
+    f_startNow = startNow;
+}
+void HNS_Schedule::fSetNeverEnd(const bool &neverEnd)
+{
+    f_neverEnd = neverEnd;
+}
+bool HNS_Schedule::fStartNow()
+{
+    return f_startNow;
+}
+bool HNS_Schedule::fNeverEnd()
+{
+    return f_neverEnd;
+}
+
 bool IsDateInSchedule(const HNS_Schedule &schedule, const int64_t &current_date)
 {
     time_t temp_time = current_date/1000;
@@ -260,6 +277,8 @@ bool IsDateInSchedule(const HNS_Schedule &schedule, const int64_t &current_date)
         start_tm = schedule.fGetStartTime();
         end_tm = schedule.fGetStopTime();
 
+        int temp1 = CompareTimes(*current_tm,start_tm);
+        int temp2 = CompareTimes(end_tm,*current_tm);
         //is in time range
         if((CompareTimes(*current_tm,start_tm) >= 0)
         && (CompareTimes(end_tm,*current_tm) >= 0))

@@ -59,6 +59,10 @@ public:
 
     void fSetMessage(const HNS_Message2 &message);
     void fGetMessage(HNS_Message2 &message) const;
+    void fSetStartNow(const bool &startNow);
+    void fSetNeverEnd(const bool &neverEnd);
+    bool fStartNow();
+    bool fNeverEnd();
 private:
     bool f_week[7];
 
@@ -75,6 +79,8 @@ private:
 
     HNS_Message2 f_scheduled_message;
     std::string f_title;
+    bool f_startNow;
+    bool f_neverEnd;
 };
 
 bool IsDateInSchedule(const HNS_Schedule &schedule, const int64_t &current_date);

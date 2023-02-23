@@ -182,6 +182,9 @@ public:
     std::string fGetName() const {return f_name;}
     void fSetName(const std::string &name) {f_name = name;}
 
+    std::string fGetConfigName() const {return f_config_name;}
+    void fSetConfigName(const std::string &config_name) {f_config_name = config_name;}
+
     std::string& fGraphicName() {return f_graphic_name;}
     std::string fGetGraphicName() const {return f_graphic_name;}
     void fSetGraphicName(const std::string &graphic_name) {f_graphic_name = graphic_name;}
@@ -214,6 +217,8 @@ private:
     std::string f_name;
     //Where to load graphics from when loading this trailer.
     std::string f_graphic_name;
+    //Where to grab the NTCIP file describing this trailer.
+    std::string f_config_name;
 
     type_hns_signboard_specials f_specials;
     std::vector< std::vector<int> > f_special_data;
@@ -306,10 +311,12 @@ public:
     void fAddPixelsOut(const size_t &board, const std::vector<HNS_PixelOut> &pixels_out);
     void fAddPixelOut(const size_t &board, const HNS_PixelOut &pixel_out);
     void fAddPixelOut(const size_t &board, const size_t &byte, const size_t &led);
-    void fClearPixelOut();
+    void fClearPixelOut(const bool &reset_state = true);
     std::vector<HNS_PixelOut> fGetPixelsOut(const size_t &board) const;
 
     type_hns_pix_out_state fGetPixelOutState(const size_t &board) const;
+
+    std::vector< std::vector<int> > fGetPixelsOutXY() const;
     void fSetPixelOutState(const type_hns_pix_out_state &state, const size_t &board);
     void fSetPixelOutStateAll(const type_hns_pix_out_state &state);
     bool fPixOutStillSearching() const;

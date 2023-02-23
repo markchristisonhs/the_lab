@@ -2,6 +2,7 @@
 #define IOIO_H
 
 #include <vector>
+#include <functional>
 
 enum
 {
@@ -54,15 +55,23 @@ class IOIO
 public:
     IOIO();
 
+    void fConnectComms(const std::function<void(void *data, const int &size)> send_data);
+
     void fAddPort(const int &pin_number);
 
     std::vector<unsigned char> fSetDigitalOut(const int &pin_number, const int &start_value = IOIO_VALUE_FALSE, const int &output_mode = IOIO_OUTPUT_MODE_NORMAL);
     std::vector<unsigned char> fSetDigitalIn(const int &pin_number);
     std::vector<unsigned char> fSetValue(const int &pin_number, const int &value);
+
+    void fReceiveData(const std::vector<unsigned char> &data);
 private:
     int fFindPin(const int &pin_number);
 
+    void fSendData(std::vector<unsigned char> data);
+
     std::vector<IOIO_Port> f_ports;
+
+    std::function<void(void *data, const int &size)> f_send_data;
 };
 
 #endif // IOIO_H

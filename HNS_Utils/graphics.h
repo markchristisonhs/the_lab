@@ -72,6 +72,9 @@ public:
     size_t fGetWidth() const;
 
     bool fAddCharacter(const HNS_Character &character, const size_t &char_spacing);
+
+    //for now, assumes 1 bit, later will need to cover other color schemes
+    std::vector<unsigned char> fGetByteArray() const;
 private:
     size_t fXYtoIndex(const HNS_Point &point, bool *outofbounds = nullptr) const;
     size_t fXYtoIndex(const size_t &x, const size_t &y, bool *outofbounds = nullptr) const;

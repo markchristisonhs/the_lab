@@ -1,4 +1,5 @@
 #include "graphics.h"
+#include <utilities.h>
 
 using namespace std;
 
@@ -292,6 +293,30 @@ bool HNS_Bitmap::fAddCharacter(const HNS_Character &character, const size_t &cha
         }
     }
     return success;
+}
+
+vector<unsigned char> HNS_Bitmap::fGetByteArray() const
+{
+    vector<unsigned char> answer, temp_vec;
+
+    for(size_t y=0; y< f_height;y++)
+    {
+        for(size_t x=0; x< f_width;x++)
+        {
+            if(fGetPixel(x,y) == HNS_Color(0,0,0))
+            {
+                temp_vec.push_back(0);
+            }
+            else
+            {
+                temp_vec.push_back(1);
+            }
+        }
+    }
+
+    answer = BoolArray_to_ByteArray(temp_vec);
+
+    return answer;
 }
 
 size_t HNS_Bitmap::fXYtoIndex(const HNS_Point &point, bool *outofbounds) const

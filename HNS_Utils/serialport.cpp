@@ -19,18 +19,24 @@
 #include <cstring>
 #include <errno.h>
 
+#include <string>
+#include <sstream>
+#include <vector>
+
 using namespace std;
 
 HNS_SerialPort::HNS_SerialPort()
     :f_serialport(0),
-      f_error(HNS_ERR_SER_NOERR)
+      f_error(HNS_ERR_SER_NOERR),
+      f_logaline(nullptr)
 {
 
 }
 
 HNS_SerialPort::HNS_SerialPort(const string &device, const type_hns_baud_rate &baud)
     :f_serialport(0),
-      f_error(HNS_ERR_SER_NOERR)
+      f_error(HNS_ERR_SER_NOERR),
+      f_logaline(nullptr)
 {
     fOpen(device,baud);
 }
@@ -169,10 +175,23 @@ bool HNS_SerialPort::fIsOpened()
 
 bool HNS_SerialPort::fWrite(const unsigned char *data, const size_t &datasize)
 {
+    string tempstring;
+    stringstream ss;
+    vector<unsigned char> temp_vec;
+
     if(fIsOpened())
     {
 #ifdef _UNIX
         //ioctl(f_serialport,TCFLSH,0);
+        if(f_logaline != nullptr)
+        {
+            ss << "Sending " << datasize << " bytes of data";
+            tempstring = ss.str();
+            f_logaline->fLogALine(tempstring);
+
+            temp_vec = vector<unsigned char>(data, data+datasize);
+            f_logaline->fLogBuffer(temp_vec);
+        }
         write(f_serialport,data,datasize);
 #elif WIN32
 		DWORD written;
@@ -192,6 +211,10 @@ bool HNS_SerialPort::fWrite(const unsigned char *data, const size_t &datasize)
 
 bool HNS_SerialPort::fRead(unsigned char *data, const size_t &datasize, ssize_t &received)
 {
+    string tempstring;
+    stringstream ss;
+    vector<unsigned char> temp_vec;
+
     if(fIsOpened())
     {
 #ifdef _UNIX
@@ -204,6 +227,15 @@ bool HNS_SerialPort::fRead(unsigned char *data, const size_t &datasize, ssize_t 
             received = 0;
             f_error = HNS_ERR_SER_READERR;
             return false;
+        }
+        if(n > 0 && f_logaline != nullptr)
+        {
+            ss << "Received " << n << " bytes of data";
+            tempstring = ss.str();
+            f_logaline->fLogALine(tempstring);
+
+            temp_vec = vector<unsigned char>(data, data+n);
+            f_logaline->fLogBuffer(temp_vec);
         }
         received = n;
         f_error = HNS_ERR_SER_NOERR;
@@ -233,7 +265,7 @@ int HNS_SerialPort::fGetError()
     return f_error;
 }
 
-
-
-
-
+void HNS_SerialPort::fSetLog(HNS_LogALine2 *logaline)
+{
+    f_logaline = logaline;
+}

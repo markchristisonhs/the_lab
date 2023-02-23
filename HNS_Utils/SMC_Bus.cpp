@@ -130,6 +130,7 @@ HNS_SMCBus_Command::HNS_SMCBus_Command()
     , f_address(0)
     , f_sent(false)
     , f_is_pix_out(false)
+    , f_pix_out_data_started(false)
     , f_bytes_expected(0)
     , f_timed_out(false)
     , f_command_created(std::chrono::steady_clock::now())
@@ -143,6 +144,7 @@ HNS_SMCBus_Command::HNS_SMCBus_Command(const unsigned char &command, const unsig
     , f_send_data(send_data)
     , f_sent(false)
     , f_is_pix_out(false)
+    , f_pix_out_data_started(false)
     , f_timed_out(false)
     , f_command_created(std::chrono::steady_clock::now())
 {
@@ -176,6 +178,7 @@ HNS_SMCBus_Command::HNS_SMCBus_Command(const unsigned char &address)
     , f_address(address)
     , f_sent(false)
     , f_is_pix_out(true)
+    , f_pix_out_data_started(false)
     , f_bytes_expected(0)
     , f_timed_out(false)
     , f_command_created(std::chrono::steady_clock::now())
@@ -261,12 +264,23 @@ bool HNS_SMCBus_Command::fIsSendDelayOver() const
 
 bool HNS_SMCBus_Command::fIsReturnDataExpected() const
 {
-    return f_bytes_expected > 0;
+    //MSC20220518 Pix out commands do expect data
+    return (f_bytes_expected > 0) || fIsPixOutCommand();
 }
 
 bool HNS_SMCBus_Command::fReturnDataIsAvailable() const
 {
-    return f_returned_data.size() >= f_bytes_expected;
+    bool result = false;
+
+    if(fIsPixOutCommand())
+    {
+        result = f_pix_out_data_started && (f_returned_data.size() >= f_bytes_expected);
+    }
+    else
+    {
+        result = f_returned_data.size() >= f_bytes_expected;
+    }
+    return result;
 }
 
 unsigned char HNS_SMCBus_Command::fGetAddress() const
@@ -304,6 +318,11 @@ size_t HNS_SMCBus_Command::fGetBytesExpected() const
     return f_bytes_expected;
 }
 
+void HNS_SMCBus_Command::fSetPixOutDataStarted()
+{
+    f_pix_out_data_started = true;
+}
+
 void HNS_SMCBus_Command::fSetTimeOut(const bool &times_out, const chrono::milliseconds &timeout)
 {
     f_times_out = times_out;
@@ -326,10 +345,26 @@ vector<unsigned char> HNS_SMCBus_Command::fBuildPacket() const
     vector<unsigned char> to_send;
     size_t i;
 
-    if(f_command != HNS_SMC_CMD_SPCL_SETSTROBE)
+    if(f_command == HNS_SMC_CMD_SPCL_SETSTROBE)
     {
-
         to_send.push_back(0xFF);
+        to_send.push_back(0x0A);
+        to_send.push_back(0xF5);
+        to_send.push_back(0x03);
+        to_send.push_back(0xFF);
+        to_send.push_back(0x03);
+        for(i=0;i<f_send_data.size();i++)
+        {
+            to_send.push_back(f_send_data[i]);
+        }
+    }
+    else if(fIsPixOutCommand())
+    {
+        to_send.push_back(0x55);
+        to_send.push_back(f_address);
+    }
+    else
+    {
         to_send.push_back(0xFF);
         to_send.push_back(0xFF);
         to_send.push_back(0x55);
@@ -338,19 +373,6 @@ vector<unsigned char> HNS_SMCBus_Command::fBuildPacket() const
         to_send.push_back((unsigned char)(f_send_data.size() & 0xFF));
         to_send.push_back(f_command);
         to_send.push_back(f_address);
-        for(i=0;i<f_send_data.size();i++)
-        {
-            to_send.push_back(f_send_data[i]);
-        }
-    }
-    else
-    {
-        to_send.push_back(0xFF);
-        to_send.push_back(0x0A);
-        to_send.push_back(0xF5);
-        to_send.push_back(0x03);
-        to_send.push_back(0xFF);
-        to_send.push_back(0x03);
         for(i=0;i<f_send_data.size();i++)
         {
             to_send.push_back(f_send_data[i]);
@@ -633,7 +655,7 @@ void HNS_SMCBus2::fCheckBuffer()
         else
         {
             // only run this if still looking for return data for the currently pending command
-            if(!f_pending_command->fReturnDataIsAvailable())
+            if((!f_pending_command->fReturnDataIsAvailable()))
             {
                 //looking for a command
                 switch(current_state)
@@ -654,6 +676,7 @@ void HNS_SMCBus2::fCheckBuffer()
                     break;
                 case HNS_SMC_BUS_RECV_STATE_DATA_PIX_OUT_GET_SIZE:
                     f_pending_command->fSetBytesExpected(*it);
+                    f_pending_command->fSetPixOutDataStarted();
                     if(*it > 0)
                     {
                         current_state = HNS_SMC_BUS_RECV_STATE_DATA_COLLECTION;

@@ -26,11 +26,14 @@ public:
 	~HNS_Font();
 
     HNS_Character fGetCharacter(const int &character_number) const;
+    std::vector<HNS_Character> fGetCharacters() const;
     size_t fGetNumCharacters() const;
     HNS_Character fGetCharacterByIndex (const size_t &index) const;
 	void fAddCharacter(const HNS_Character &character);
     void fChangeCharacter(const HNS_Character &character, const int &character_number);
 	void fRemoveCharacter(const int &character_number);
+
+    bool fIsCharValid(const int &character_number) const;
 
 	void fSetFontNumber(const int &font_number);
 	int fGetFontNumber() const;

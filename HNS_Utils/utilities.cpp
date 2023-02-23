@@ -15,13 +15,20 @@
 
 using namespace std;
 
-vector<int> HNS_string_to_int_vector(const string &input, const char &delimiter, int &error)
+vector<int> HNS_string_to_int_vector(const string &input, const char &delimiter, int &error, const bool &is_hex)
 {
 	vector<int> result;
 	string temp_string = input,temp_string2;
 	size_t index = 0;
 	long ltemp;
 	char *endptr = nullptr;
+
+    int base = 10;
+
+    if(is_hex)
+    {
+        base = 16;
+    }
 
 	errno = 0;
 
@@ -30,7 +37,7 @@ vector<int> HNS_string_to_int_vector(const string &input, const char &delimiter,
 	{
 	    index = temp_string.find_first_of(delimiter);
 		temp_string2 = temp_string.substr(0,index);
-		ltemp = strtol(temp_string2.c_str(),&endptr,10);
+        ltemp = strtol(temp_string2.c_str(),&endptr,base);
 		if(errno != 0)
 		{
 			//some error occurred
@@ -275,6 +282,37 @@ double Round(const double &input, const int &places)
     result = result * pow(10,places);
     result = floor(result + 0.5);
     result = result / pow(10,places);
+
+    return result;
+}
+
+vector<unsigned char> BoolArray_to_ByteArray(const vector<unsigned char> &input)
+{
+    vector<unsigned char> result;
+
+    unsigned char byte = 0;
+    size_t bit_count = 7;
+    for(size_t ui=0;ui<input.size();ui++)
+    {
+        byte = byte | ((input[ui] != 0) ? 0x1 : 0x0);
+        if(bit_count == 0)
+        {
+            result.push_back(byte);
+            byte = 0;
+            bit_count = 7;
+        }
+        else
+        {
+            byte = byte << 1;
+            bit_count--;
+        }
+    }
+
+    if(bit_count < 7)
+    {
+        byte = byte << bit_count;
+        result.push_back(byte);
+    }
 
     return result;
 }

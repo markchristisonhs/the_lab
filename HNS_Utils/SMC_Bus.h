@@ -70,12 +70,15 @@ public:
     unsigned char fGetCommand() const;
 
     bool fIsPixOutCommand() const;
+    void fNoPixOutFound();
 
     void fAddReturnData(const unsigned char &data);
     void fSetReturnData(const std::vector<unsigned char> &data);
 
     void fSetBytesExpected(const size_t &bytes_expected);
     size_t fGetBytesExpected() const;
+
+    void fSetPixOutDataStarted();
 
     static void fSetTimeOut(const bool &times_out, const std::chrono::milliseconds &timeout);
     static void fSetTimeOut(const bool &times_out, const int &timeout);
@@ -90,6 +93,7 @@ private:
     std::vector<unsigned char> f_returned_data;
     bool f_sent;
     bool f_is_pix_out;
+    bool f_pix_out_data_started;
     size_t f_bytes_expected;
 
     static bool f_times_out;

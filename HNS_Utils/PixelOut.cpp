@@ -36,6 +36,17 @@ size_t &HNS_PixelOut::fLED()
     return f_led;
 }
 
+bool HNS_PixelOut::operator == (const HNS_PixelOut &rhs) const
+{
+    return (f_led == rhs.f_led)
+        && (f_byte == rhs.f_byte);
+}
+
+bool HNS_PixelOut::operator != (const HNS_PixelOut &rhs) const
+{
+    return !(*this == rhs);
+}
+
 vector <HNS_PixelOut> PixelsOut_from_Byte(const unsigned char &data_byte, const size_t &byte_no)
 {
     vector<HNS_PixelOut> result;

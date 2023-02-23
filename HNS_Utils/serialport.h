@@ -10,6 +10,7 @@
 
 #include <string>
 #include "HNS_CommLink.h"
+#include <logaline.h>
 
 #ifdef WIN32
 #include <Windows.h>
@@ -37,9 +38,13 @@ public:
     bool fRead(unsigned char *data, const size_t &datasize, ssize_t &received);
 
     int fGetError();
+
+    void fSetLog(HNS_LogALine2 *logaline);
 private:
 	HNS_type_port f_serialport;
     int f_error;
+
+    HNS_LogALine2 *f_logaline;
 };
 
 

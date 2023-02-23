@@ -65,6 +65,11 @@ IOIO::IOIO()
 
 }
 
+void IOIO::fConnectComms(const std::function<void(void *data, const int &size)> send_data)
+{
+    f_send_data = send_data;
+}
+
 void IOIO::fAddPort(const int &pin_number)
 {
     if(fFindPin(pin_number) == -1)
@@ -87,6 +92,8 @@ vector<unsigned char> IOIO::fSetDigitalOut(const int &pin_number, const int &sta
         byte = byte | (start_value == IOIO_VALUE_TRUE) ? 0x20 : 0x00;
         byte = byte | (output_mode == IOIO_OUTPUT_MODE_OPEN_SOURCE) ? 0x01 : 0x00;
         buffer_to_send.push_back(byte);
+
+        fSendData(buffer_to_send);
 
         f_ports[index].fSetDirection(IOIO_DIRECTION_OUTPUT);
         f_ports[index].fSetOutputMode(output_mode);
@@ -111,6 +118,8 @@ vector<unsigned char> IOIO::fSetDigitalIn(const int &pin_number)
         byte = byte | 0x1;
         buffer_to_send.push_back(byte);
 
+        fSendData(buffer_to_send);
+
         f_ports[index].fSetDirection(IOIO_DIRECTION_INPUT);
     }
 
@@ -131,10 +140,17 @@ std::vector<unsigned char> IOIO::fSetValue(const int &pin_number, const int &val
         byte = byte | (value == IOIO_VALUE_TRUE) ? 0x01 : 0x00;
         buffer_to_send.push_back(byte);
 
+        fSendData(buffer_to_send);
+
         f_ports[index].fSetValue(value);
     }
 
     return buffer_to_send;
+}
+
+void IOIO::fReceiveData(const vector<unsigned char> &/*data*/)
+{
+
 }
 
 int IOIO::fFindPin(const int &pin_number)
@@ -151,4 +167,12 @@ int IOIO::fFindPin(const int &pin_number)
     }
 
     return result;
+}
+
+void IOIO::fSendData(vector <unsigned char> data)
+{
+    if(f_send_data && (data.size() > 0))
+    {
+        f_send_data(static_cast<void*>(data.data()),data.size());
+    }
 }

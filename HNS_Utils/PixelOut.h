@@ -15,6 +15,9 @@ public:
 
     size_t fLED() const;
     size_t &fLED();
+
+    bool operator == (const HNS_PixelOut &rhs) const;
+    bool operator != (const HNS_PixelOut &rhs) const;
 private:
     size_t f_byte,f_led;
 };
