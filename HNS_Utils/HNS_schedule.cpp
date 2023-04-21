@@ -3,17 +3,22 @@
 #include "utilities.h"
 
 HNS_Schedule::HNS_Schedule():
+    f_week(7,0),
     f_active(false),
     f_suspend(false),
     f_message_type(HNS_MESSAGE_TYPE_FACTORY),
     f_message_no(0),
-    f_title("")
+    f_title(""),
+    f_startNow(true),
+    f_neverEnd(true),
+    f_override_radar(false),
+    f_override_strobe(false)
 {
-    int i;
-    for(i=0;i<7;i++)
-    {
-        f_week[i] = false;
-    }
+    std::time_t t = std::time(0);
+    f_start_date = *std::localtime(&t);
+    f_end_date = *std::localtime(&t);
+    f_start = *std::localtime(&t);
+    f_stop = *std::localtime(&t);
 }
 
 void HNS_Schedule::fSetSuspend()
@@ -80,7 +85,7 @@ void HNS_Schedule::fSetDay(const int &day)
 {
     if(day >= HNS_SCHED_SUNDAY && day <= HNS_SCHED_SATURDAY)
     {
-        f_week[static_cast<size_t>(day)] = true;
+        f_week[static_cast<size_t>(day)] = 1;
     }
 }
 
@@ -88,7 +93,7 @@ void HNS_Schedule::fClearDay(const int &day)
 {
     if(day >= HNS_SCHED_SUNDAY && day <= HNS_SCHED_SATURDAY)
     {
-        f_week[static_cast<size_t>(day)] = false;
+        f_week[static_cast<size_t>(day)] = 0;
     }
 }
 
@@ -253,13 +258,85 @@ void HNS_Schedule::fSetNeverEnd(const bool &neverEnd)
 {
     f_neverEnd = neverEnd;
 }
-bool HNS_Schedule::fStartNow()
+bool HNS_Schedule::fStartNow() const
 {
     return f_startNow;
 }
-bool HNS_Schedule::fNeverEnd()
+bool HNS_Schedule::fNeverEnd() const
 {
     return f_neverEnd;
+}
+
+void HNS_Schedule::fSetOverrideRadar(const bool &override)
+{
+    f_override_radar = override;
+}
+
+void HNS_Schedule::fSetOverrideStrobe(const bool &override)
+{
+    f_override_strobe = override;
+}
+
+void HNS_Schedule::fSetStrobeSettings(const HNS_Radar_Strobe &strobe_settings)
+{
+    f_strobe_settings = strobe_settings;
+}
+
+bool HNS_Schedule::fsIsScheduleValid(const HNS_Schedule &schedule, const std::tm &compare_date, type_sched_error &error)
+{
+    error = SCHED_ERROR_NONE;
+    int itemp;
+
+    std::tm start_date = schedule.fGetStartDate();
+    std::tm end_date = schedule.fGetEndDate();
+
+    start_date.tm_hour = schedule.fGetStartTime().tm_hour;
+    start_date.tm_min = schedule.fGetStartTime().tm_min;
+    start_date.tm_sec = schedule.fGetStartTime().tm_sec;
+
+    end_date.tm_hour = schedule.fGetStopTime().tm_hour;
+    end_date.tm_min = schedule.fGetStopTime().tm_min;
+    end_date.tm_sec = schedule.fGetStopTime().tm_sec;
+
+    if(CompareDates(end_date,start_date) < 0)
+    {
+        itemp = error;
+        itemp = itemp | SCHED_ERROR_END_BEFORE_START;
+        error = static_cast<type_sched_error>(itemp);
+    }
+
+    if(CompareDates(start_date,compare_date) < 0)
+    {
+        itemp = error;
+        itemp = itemp | SCHED_ERROR_BEGINS_IN_PAST;
+        error = static_cast<type_sched_error>(itemp);
+    }
+    else if(CompareDates(start_date,compare_date) == 0)
+    {
+        if(CompareTimes(start_date,compare_date))
+        {
+            itemp = error;
+            itemp = itemp | SCHED_ERROR_BEGINS_IN_PAST;
+        }
+    }
+
+    if(CompareDates(end_date,compare_date) < 0)
+    {
+        itemp = error;
+        itemp = itemp | SCHED_ERROR_ENDS_IN_PAST;
+        error = static_cast<type_sched_error>(itemp);
+    }
+    else if(CompareDates(end_date,compare_date) == 0)
+    {
+        if(CompareTimes(end_date,compare_date))
+        {
+            itemp = error;
+            itemp = itemp | SCHED_ERROR_ENDS_IN_PAST;
+            error = static_cast<type_sched_error>(itemp);
+        }
+    }
+
+    return error == SCHED_ERROR_NONE;
 }
 
 bool IsDateInSchedule(const HNS_Schedule &schedule, const int64_t &current_date)
@@ -277,8 +354,6 @@ bool IsDateInSchedule(const HNS_Schedule &schedule, const int64_t &current_date)
         start_tm = schedule.fGetStartTime();
         end_tm = schedule.fGetStopTime();
 
-        int temp1 = CompareTimes(*current_tm,start_tm);
-        int temp2 = CompareTimes(end_tm,*current_tm);
         //is in time range
         if((CompareTimes(*current_tm,start_tm) >= 0)
         && (CompareTimes(end_tm,*current_tm) >= 0))

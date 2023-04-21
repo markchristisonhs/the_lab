@@ -4,8 +4,12 @@
 
 #include <QPainter>
 #include <QKeyEvent>
+#include <QTimer>
+#include <QDebug>
 
 using namespace std;
+
+int HNS_Message_Preview::f_max_num_pages = 3;
 
 HNS_Message_Preview::HNS_Message_Preview(QWidget *parent) :
     QWidget(parent),
@@ -15,6 +19,7 @@ HNS_Message_Preview::HNS_Message_Preview(QWidget *parent) :
   , f_selected(false)
   , f_last_update(0)
   , f_preview_state(HNS_PREVIEW_ON)
+  , f_timer(nullptr)
 {
     ui->setupUi(this);
 }
@@ -24,7 +29,7 @@ HNS_Message_Preview::~HNS_Message_Preview()
     delete ui;
 }
 
-void HNS_Message_Preview::fSetMessage(const HNS_Message2 &message, const bool &do_update)
+void HNS_Message_Preview::fSetMessage(const HNS_Message2 &message, const bool &do_update, const bool &reset_current_page)
 {
     QString tempstring;
     f_current_message = message;
@@ -32,7 +37,10 @@ void HNS_Message_Preview::fSetMessage(const HNS_Message2 &message, const bool &d
 
     f_page_strings = fSplitPages(tempstring);
 
-    f_current_page = 0;
+    if(reset_current_page)
+    {
+        f_current_page = 0;
+    }
 
     if(do_update)
     {
@@ -40,18 +48,21 @@ void HNS_Message_Preview::fSetMessage(const HNS_Message2 &message, const bool &d
     }
 }
 
-void HNS_Message_Preview::fSetMessage(const QString &multi, const bool &do_update)
+void HNS_Message_Preview::fSetMessage(const QString &multi, const bool &do_update, const bool &reset_current_page)
 {
     int error = 0;
     type_multi_syntax_error multi_error = HNS_MULTI_SYNTAX_ERROR_NONE;
     string tempstring = multi.toStdString();
     HNS_Message2 temp_message;
-    error = temp_message.fSetMULTI(tempstring,&f_fonts,&f_graphics,nullptr,&multi_error);
+    error = temp_message.fSetMULTI(tempstring,&f_fonts,&f_graphics,nullptr,&multi_error,nullptr,f_max_num_pages);
     f_current_message = temp_message;
 
     f_page_strings = fSplitPages(multi);
 
-    f_current_page = 0;
+    if(reset_current_page)
+    {
+        f_current_page = 0;
+    }
 
     if(do_update)
     {
@@ -125,6 +136,8 @@ int HNS_Message_Preview::fInsertMessage(const QString &multi, const int &pos, co
                 f_current_page = index + 1;
             }
             f_page_strings.append(temp_pages);
+
+            emit fFlashStateChanged();
         }
         //insert somewhere else
         else
@@ -172,6 +185,89 @@ void HNS_Message_Preview::fAddText(const QString &text, const int &page, const b
     }
 }
 
+void HNS_Message_Preview::fAddFlashTag(const double &flash_on, const double &flash_off, const bool &onfirst)
+{
+    if(!fIsFlashTagOpen())
+    {
+        int flash_on_temp = static_cast<int>(flash_on * 10.0);
+        int flash_off_temp = static_cast<int>(flash_off * 10.0);
+
+        if(flash_on_temp < 0)
+        {
+            flash_on_temp = 0;
+        }
+        if(flash_on_temp > 99)
+        {
+            flash_on_temp = 99;
+        }
+
+        if(flash_off_temp < 0)
+        {
+            flash_off_temp = 0;
+        }
+        if(flash_off_temp > 99)
+        {
+            flash_off_temp = 99;
+        }
+
+        QString tempstring;
+        if(onfirst)
+        {
+            tempstring = QString("[flt%1o%2]").arg(flash_on_temp).arg(flash_off_temp);
+        }
+        else
+        {
+            tempstring = QString("[flo%1t%2]").arg(flash_off_temp).arg(flash_on_temp);
+        }
+        fAddText(tempstring);
+
+        emit fFlashStateChanged();
+    }
+}
+
+void HNS_Message_Preview::fToggleFlashTag(const double &flash_on, const double &flash_off, const bool &onfirst)
+{
+    if(fIsFlashTagOpen())
+    {
+        fCloseFlashTag();
+    }
+    else
+    {
+        fAddFlashTag(flash_on,flash_off,onfirst);
+    }
+}
+
+void HNS_Message_Preview::fCloseFlashTag()
+{
+    if(fIsFlashTagOpen())
+    {
+        fAddText("[/fl]");
+
+        emit fFlashStateChanged();
+    }
+}
+
+bool HNS_Message_Preview::fIsFlashTagOpen()
+{
+    bool result = false;
+    QString tempstring = fMergePages();
+
+    int flash_tag = tempstring.lastIndexOf("[fl");
+    int flash_close_tag = -1;
+
+    if(flash_tag >= 0) //found a flashing tag
+    {
+        result = true;
+        flash_close_tag = tempstring.lastIndexOf("[/fl");
+        if(flash_close_tag > flash_tag) //flashing tag has been closed
+        {
+            result = false;
+        }
+    }
+
+    return result;
+}
+
 void HNS_Message_Preview::fSetFonts(const vector<HNS_Font> &fonts)
 {
     f_fonts = fonts;
@@ -210,7 +306,7 @@ void HNS_Message_Preview::fSetLineJustification(const type_justification_line &l
 
     f_page_strings[f_current_page] = current_message;
     std::string tempstring = fMergePages().toStdString();
-    f_current_message.fSetMULTI(tempstring,&f_fonts,&f_graphics,nullptr);
+    f_current_message.fSetMULTI(tempstring,&f_fonts,&f_graphics,nullptr,nullptr,nullptr,f_max_num_pages);
 }
 
 void HNS_Message_Preview::fSetPageJustification(const type_justification_page &page_justification)
@@ -242,20 +338,23 @@ void HNS_Message_Preview::fSetPageJustification(const type_justification_page &p
 
 void HNS_Message_Preview::fAddPage(const int &page)
 {
-    if(page == -1)
+    if(f_page_strings.size() < f_max_num_pages)
     {
-        f_page_strings.insert(f_current_page+1,"");
-        f_current_page++;
-    }
-    else
-    {
-        if(page < f_page_strings.size())
+        if(page == -1)
         {
-            f_page_strings.insert(page+1,"");
+            f_page_strings.insert(f_current_page+1,"");
+            f_current_page++;
         }
-    }
+        else
+        {
+            if(page < f_page_strings.size())
+            {
+                f_page_strings.insert(page+1,"");
+            }
+        }
 
-    fUpdate();
+        fUpdate();
+    }
 }
 
 void HNS_Message_Preview::fRemovePage(const int &page)
@@ -377,7 +476,8 @@ void HNS_Message_Preview::fChangeFont(const int &font_no, const bool &all)
 
 int HNS_Message_Preview::fTotalPage() const
 {
-    return f_current_message.fGetNumPages();
+//    return f_current_message.fGetNumPages();
+    return f_page_strings.size();
 }
 
 HNS_Message2 HNS_Message_Preview::fGetCurrentMessage() const
@@ -400,15 +500,56 @@ void HNS_Message_Preview::fClear()
 
 void HNS_Message_Preview::fStartPreview(const qint64 &time, const int &flip_time)
 {
-    f_last_update = time;
-    f_current_page = 0;
-    f_preview_state = HNS_PREVIEW_ON;
-    f_flip_time = flip_time;
-    fUpdate(false);
+    if(f_timer == nullptr)
+    {
+        f_last_update = time;
+        f_current_page = 0;
+        f_preview_state = HNS_PREVIEW_ON;
+        f_flip_time = flip_time;
+
+        f_timer = new QTimer(this);
+        connect(f_timer,SIGNAL(timeout()),SLOT(fTickTock()));
+        f_timer->setInterval(100);
+        f_timer->start();
+
+        fUpdate(false);
+    }
 }
 
-void HNS_Message_Preview::fTickTock(const qint64 &time)
+void HNS_Message_Preview::fStopPreview()
 {
+    if(f_timer != nullptr)
+    {
+        f_timer->stop();
+        f_timer->deleteLater();
+        f_timer = nullptr;
+    }
+}
+
+void HNS_Message_Preview::fStartStopPreview(const bool &start, const qint64 &time, const int &flip_time)
+{
+    if(start)
+    {
+        //only start if preview isn't running
+        if(f_timer == nullptr)
+        {
+            fStartPreview(time,flip_time);
+        }
+    }
+    else
+    {
+        //only stop if timer is running
+        if(f_timer != nullptr)
+        {
+            fStopPreview();
+        }
+    }
+}
+
+void HNS_Message_Preview::fTickTock()
+{
+    qint64 time = QDateTime::currentMSecsSinceEpoch();
+
     if(f_current_message.fGetNumPages() > 1)
     {
         switch(f_preview_state)
@@ -450,6 +591,19 @@ void HNS_Message_Preview::fTickTock(const qint64 &time)
             break;
         }
     }
+}
+
+void HNS_Message_Preview::fsSetMaxPages(const int &max_num_pages)
+{
+    if(max_num_pages > 0)
+    {
+        f_max_num_pages = max_num_pages;
+    }
+}
+
+int HNS_Message_Preview::fsGetMaxPages()
+{
+    return f_max_num_pages;
 }
 
 void HNS_Message_Preview::fSetPageTimes(const double &pagetime_on, const double &pagetime_off, const int &page)
@@ -560,8 +714,6 @@ void HNS_Message_Preview::keyPressEvent(QKeyEvent *event)
     QChar last_char;
     int index;
 
-    int temp_key = event->key();
-
     if(event->key() >= 0x01000000)
     {
         switch(event->key())
@@ -590,6 +742,18 @@ void HNS_Message_Preview::keyPressEvent(QKeyEvent *event)
                     {
                         f_page_strings[f_current_page].chop(1);
                     }
+                }
+                else if(temp_qstring.contains("[/fl",Qt::CaseInsensitive) != 0)
+                {
+                    f_page_strings[f_current_page] = RemoveTagAtEnd(f_page_strings[f_current_page]);
+
+                    emit fFlashStateChanged();
+                }
+                else if(temp_qstring.contains("[fl",Qt::CaseInsensitive) != 0)
+                {
+                    f_page_strings[f_current_page] = RemoveTagAtEnd(f_page_strings[f_current_page]);
+
+                    emit fFlashStateChanged();
                 }
                 else if(temp_qstring.contains("[f",Qt::CaseInsensitive) != 0)
                 {
@@ -758,7 +922,7 @@ bool HNS_Message_Preview::fUpdate(const bool &refresh_pages, const bool &blank)
     if(refresh_pages)
     {
         tempstring = fMergePages().toStdString();
-        f_current_message.fSetMULTI(tempstring,&f_fonts,&f_graphics,nullptr,&multi_error);
+        f_current_message.fSetMULTI(tempstring,&f_fonts,&f_graphics,nullptr,&multi_error,nullptr,f_max_num_pages);
         if(multi_error != HNS_MULTI_SYNTAX_ERROR_NONE)
         {
             success = false;
@@ -790,6 +954,7 @@ bool HNS_Message_Preview::fUpdate(const bool &refresh_pages, const bool &blank)
                 for(size_t ui = 0; ui < signboard.fGetNumBoards(); ui++)
                 {
                     temp_bitmap = signboard.fGetCharBoardBitmap(ui);
+                    f_images[ui] = ConvertHNS_BitmapToQImage(signboard.fGetCharBoardBitmap(ui),HNS_Color(255,255,255),QColor(255,172,39));
                 }
             }
         }
@@ -825,7 +990,7 @@ bool HNS_Message_Preview::fIsNewPageNeeded(const QString &)
     bool too_tall;
 
     std::string tempstring = fMergePages().toStdString();
-    temp_message.fSetMULTI(tempstring,&f_fonts,&f_graphics,nullptr,nullptr,&too_tall);
+    temp_message.fSetMULTI(tempstring,&f_fonts,&f_graphics,nullptr,nullptr,&too_tall,f_max_num_pages);
 
     if(too_tall)
     {

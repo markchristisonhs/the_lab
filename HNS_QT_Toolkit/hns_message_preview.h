@@ -29,8 +29,8 @@ public:
     explicit HNS_Message_Preview(QWidget *parent = nullptr);
     ~HNS_Message_Preview();
 
-    void fSetMessage(const HNS_Message2 &message, const bool &do_update = true);
-    void fSetMessage(const QString &multi, const bool &do_update = true);
+    void fSetMessage(const HNS_Message2 &message, const bool &do_update = true, const bool &reset_current_page = true);
+    void fSetMessage(const QString &multi, const bool &do_update = true, const bool &reset_current_page = true);
     bool fUpdate(const bool &refresh_pages = false, const bool &blank = false);
 
     void fSetActivationCode(const HNS_NTCIP_MessageActivationCode &activation_code);
@@ -44,6 +44,11 @@ public:
 
     //Where Add message assumes the string represents new pages, this adds text to the indicated page, or if that is -1, the currently selected page
     void fAddText(const QString &text, const int &page = -1, const bool &do_update = true);
+
+    void fAddFlashTag(const double &flash_on, const double &flash_off, const bool &onfirst);
+    void fToggleFlashTag(const double &flash_on, const double &flash_off, const bool &onfirst);
+    void fCloseFlashTag();
+    bool fIsFlashTagOpen();
 
     void fSetFonts(const std::vector<HNS_Font> &fonts);
     void fSetGraphics(const std::vector<HNS_Graphic> &graphics);
@@ -86,8 +91,11 @@ public:
 
     //flip time is the time that it flips from one message to the next
     void fStartPreview(const qint64 &time, const int &flip_time = 1000);
-    void fTickTock(const qint64 &time);
+    void fStopPreview();
+    void fStartStopPreview(const bool &start, const qint64 &time = 0, const int &flip_time = 1000);
 
+    static void fsSetMaxPages(const int &max_num_pages);
+    static int fsGetMaxPages();
 
 protected:
     void paintEvent(QPaintEvent *event);
@@ -95,11 +103,13 @@ protected:
 
 private slots:
     void keyPressEvent(QKeyEvent *event);
+    void fTickTock();
 
 signals:
     void fLineJustificationChanged(const type_justification_line &line_justification);
     void fPageJustificationChanged(const type_justification_page &page_justification);
     void fClicked(QMouseEvent *event);
+    void fFlashStateChanged();
 
     void fNewPageCreated();
 
@@ -129,6 +139,10 @@ private:
     qint64 f_last_update;
     type_preview_state f_preview_state;
     int f_flip_time;
+
+    static int f_max_num_pages;
+
+    QTimer *f_timer;
 };
 
 #endif // HNS_MESSAGE_PREVIEW_H

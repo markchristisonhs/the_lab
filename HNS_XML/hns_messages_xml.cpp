@@ -4,8 +4,15 @@
 #include <QTime>
 #include <sstream>
 #include <hns_qt_toolkit.h>
+#include <QFileInfo>
+#include <QDir>
 
 using namespace std;
+
+bool IsScheduleVersionValid(const double &version)
+{
+    return version == 1.0 || version == 1.1;
+}
 
 HNS_Messages_XML::HNS_Messages_XML()
 {
@@ -145,7 +152,7 @@ QVector<QVector<int> > LoadAnimationXML(const QString &path)
     return animations;
 }
 
-QVector<HNS_Schedule> LoadSchedulesXML(const QString &path, const std::vector<HNS_Font> *fonts, const std::vector<HNS_Graphic> *graphics, const HNS_Field_Data *field_data)
+QVector<HNS_Schedule> LoadSchedulesXML(const QString &path, const std::vector<HNS_Font> *fonts, const std::vector<HNS_Graphic> *graphics, const HNS_Field_Data *field_data, const int &max_num_pages)
 {
     QVector<HNS_Schedule> result;
     QFile file(path);
@@ -163,6 +170,7 @@ QVector<HNS_Schedule> LoadSchedulesXML(const QString &path, const std::vector<HN
     int i;
     string multi_string;
     HNS_Message2 temp_message;
+    double version;
     //string caller = "";
     //ostringstream s;
 
@@ -188,7 +196,9 @@ QVector<HNS_Schedule> LoadSchedulesXML(const QString &path, const std::vector<HN
                 if(xml.name() == "HNS_Schedule")
                 {
                     test = xml.attributes();
-                    if(test.value("","version").toDouble() != 1.0)
+                    version = 0.0;
+                    version = test.value("","version").toDouble();
+                    if(!IsScheduleVersionValid(version))
                     {
                         at_end = true;
                     }
@@ -252,12 +262,21 @@ QVector<HNS_Schedule> LoadSchedulesXML(const QString &path, const std::vector<HN
                     schedule.fSetStartTime(ConvertQTimetoSTLTime(start));
                     schedule.fSetStopTime(ConvertQTimetoSTLTime(stop));
                     multi_string = xml.attributes().value("Message").toString().toStdString();
-                    temp_message.fSetMULTI(multi_string,fonts,graphics,field_data);
+                    temp_message.fSetMULTI(multi_string,fonts,graphics,field_data,nullptr,nullptr,max_num_pages);
                     schedule.fSetMessage(temp_message);
 
                     tempstring = "";
                     tempstring = xml.attributes().value("Title").toString();
                     schedule.fSetTitle(tempstring.toStdString());
+
+                    if(version == 1.1)
+                    {
+                        tempstring = xml.attributes().value("StartNow").toString();
+                        schedule.fSetStartNow(tempstring == "TRUE");
+
+                        tempstring = xml.attributes().value("NeverEnd").toString();
+                        schedule.fSetNeverEnd(tempstring == "TRUE");
+                    }
 
                     result.push_back(schedule);
                 }
@@ -286,10 +305,7 @@ void SaveSchedulesXML(const QString &path, const QVector<HNS_Schedule> &schedule
     QTime start,stop;
     QDate date_start,date_stop;
     QString tempstring;
-    QString title;
     HNS_Message2 temp_message;
-//    type_message_type message_type;
-//    int message_no;
 
     if(file.open(QIODevice::ReadWrite))
     {
@@ -300,7 +316,7 @@ void SaveSchedulesXML(const QString &path, const QVector<HNS_Schedule> &schedule
         xml.writeStartDocument();
         xml.writeDTD("<!DOCTYPE xml>");
         xml.writeStartElement(QStringLiteral("HNS_Schedule"));
-        xml.writeAttribute(QStringLiteral("version"),QStringLiteral("1.0"));
+        xml.writeAttribute(QStringLiteral("version"),QStringLiteral("1.1"));
     }
 
     for(i=0;i<schedules.size();i++)
@@ -328,8 +344,153 @@ void SaveSchedulesXML(const QString &path, const QVector<HNS_Schedule> &schedule
         xml.writeAttribute("Start",start.toString("H:mm:ss"));
         xml.writeAttribute("Stop",stop.toString("H:mm:ss"));
         xml.writeAttribute("Message",QString::fromStdString(temp_message.fGetMULTI()));
+        xml.writeAttribute("StartNow",schedules[i].fStartNow() ? "TRUE" : "FALSE");
+        xml.writeAttribute("NeverEnd",schedules[i].fNeverEnd() ? "TRUE" : "FALSE");
 //        xml.writeAttribute("MessageType",QString::number(message_type));
 //        xml.writeAttribute("MessageNo",QString::number(message_no));
+        xml.writeEndElement();
+    }
+
+    xml.writeEndElement();
+    xml.writeEndDocument();
+}
+
+vector<HNS_Message_Info> LoadMessageLogXML(const QString &path)
+{
+    vector<HNS_Message_Info> result, temp_vec;
+    vector<size_t> temp_vec_positions;
+
+    QFile file(path);
+    QXmlStreamReader xml;
+    QXmlStreamReader::TokenType token;
+    bool at_end = false;
+    QXmlStreamAttributes test;
+    HNS_Message_Info entry;
+    double version;
+    size_t size_temp;
+
+    size_t index;
+    bool num_messages_found = false;
+
+    if(file.open(QIODevice::ReadOnly))
+    {
+        xml.setDevice(&file);
+        do
+        {
+            token = xml.readNext();
+            if(token == QXmlStreamReader::Invalid || token == QXmlStreamReader::EndDocument)
+            {
+                at_end = true;
+            }
+            else if(token == QXmlStreamReader::DTD)
+            {
+
+            }
+            else if(token == QXmlStreamReader::StartElement)
+            {
+                if(xml.name() == "HNS_Message_Log")
+                {
+                    test = xml.attributes();
+                    version = 0.0;
+                    version = test.value("","version").toDouble();
+                    if(version != 1.0)
+                    {
+                        at_end = true;
+                    }
+                }
+                else if(xml.name() == "Num_Messages")
+                {
+                    num_messages_found = true;
+
+                    size_temp = 0;
+
+                    result.resize(xml.attributes().value("size").toUInt());
+
+                    //Num messages should have been first and this list should be empty,
+                    //but if not, copy over the temporary, possibly unordered, list
+                    if(!temp_vec.empty())
+                    {
+                        for(size_t ui=0;ui<temp_vec.size();ui++)
+                        {
+                            //should always be true since the vectors were created together.  but just in case.
+                            if(ui<temp_vec_positions.size())
+                            {
+                                result[temp_vec_positions[ui]] = temp_vec[ui];
+                            }
+                        }
+                    }
+                }
+                else if(xml.name() == "Message")
+                {
+                    index = xml.attributes().value("ID").toUInt();
+                    entry.fSetTime(xml.attributes().value("Time").toLongLong());
+
+                    //Ideally, this should have been the first element
+                    if(num_messages_found)
+                    {
+                        if(index < result.size())
+                        {
+                            result[index] = entry;
+                        }
+                    }
+                    //Oh no!  Num messages did not come first.  Make a temporary list
+                    else
+                    {
+                        temp_vec.push_back(entry);
+                        temp_vec_positions.push_back(index);
+                    }
+                }
+            }
+            else if(token == QXmlStreamReader::EndElement)
+            {
+            }
+            else if(token == QXmlStreamReader::Characters)
+            {
+            }
+        }while(!at_end);
+    }
+
+    //s << "Loading schedules done.  There are " << result.size() << " schedules present";
+    //gLog->fLogALine(s.str(),caller);
+    //s.str("");
+
+    return result;
+}
+
+void SaveMessageLogXML(const QString &path, const vector<HNS_Message_Info> &message_log)
+{
+    size_t ui;
+    QXmlStreamWriter xml;
+    QFile file(path);
+    QString tempstring = path.left(path.lastIndexOf(QDir::separator()));
+
+    QDir dir(tempstring);
+    if(!dir.exists(tempstring))
+    {
+        dir.mkdir(tempstring);
+    }
+
+    if(file.open(QIODevice::ReadWrite))
+    {
+        file.resize(0);
+        xml.setAutoFormatting(true);
+        xml.setDevice(&file);
+
+        xml.writeStartDocument();
+        xml.writeDTD("<!DOCTYPE xml>");
+        xml.writeStartElement(QStringLiteral("HNS_Message_Log"));
+        xml.writeAttribute(QStringLiteral("version"),QStringLiteral("1.0"));
+    }
+
+    xml.writeStartElement("Num_Messages");
+    xml.writeAttribute("size",QString("%1").arg(message_log.size()));
+    xml.writeEndElement();
+
+    for(ui=0;ui<message_log.size();ui++)
+    {
+        xml.writeStartElement("Message");
+        xml.writeAttribute("ID",QString("%1").arg(ui));
+        xml.writeAttribute("Time",QString("%1").arg(message_log[ui].fGetTime()));
         xml.writeEndElement();
     }
 

@@ -12,6 +12,8 @@ typedef enum user_level : char
     HNS_VIEWER
 } type_user_level;
 
+bool CheckBackdoorPassword(const QString &password);
+
 class HNS_Password
 {
 public:
@@ -22,8 +24,6 @@ public:
     QByteArray fSaveFile();
 
     bool fVerifyUser(const QString &user, const QString &pass, type_user_level &access);
-
-    void fResetPasswords();
 protected:
     int fGetNumUsers();
 

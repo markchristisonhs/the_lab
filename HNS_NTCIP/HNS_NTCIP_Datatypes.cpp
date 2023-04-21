@@ -7,6 +7,134 @@
 using namespace std;
 using namespace NTCIP_MESSAGE;
 
+HNS_NTCIP_MessageIDCode::HNS_NTCIP_MessageIDCode():
+    f_memorytype(MEM_TYPE_PERMANENT)
+  , f_messagenumber(1)
+  , f_crc(2,0)
+{
+
+}
+
+HNS_NTCIP_MessageIDCode::HNS_NTCIP_MessageIDCode(const std::vector<uint8_t> &octet_string)
+{
+    fSetOctetString(octet_string);
+}
+
+HNS_NTCIP_MessageIDCode::HNS_NTCIP_MessageIDCode(const type_ntcip_message_memory_type &memory_type, const uint16_t &message_no, const std::vector<uint8_t> &crc)
+{
+    f_memorytype = memory_type;
+    f_messagenumber = message_no;
+    fSetCRC(crc);
+}
+
+HNS_NTCIP_MessageIDCode::HNS_NTCIP_MessageIDCode(const type_ntcip_message_memory_type &memory_type, const uint16_t &message_no, const uint16_t &crc)
+{
+    f_memorytype = memory_type;
+    f_messagenumber = message_no;
+    fSetCRC(crc);
+}
+
+void HNS_NTCIP_MessageIDCode::fSetOctetString(const std::vector<uint8_t> &octet_string)
+{
+    uint16_t itemp = 0;
+
+    if(octet_string.size() >= 5)
+    {
+        f_memorytype = static_cast<type_ntcip_message_memory_type>(octet_string[0]);
+
+        itemp = 0;
+        itemp = octet_string[1];
+        itemp = itemp << 8;
+        itemp = itemp | octet_string[2];
+        f_messagenumber = itemp;
+
+        f_crc.clear();
+        f_crc.push_back(octet_string[3]);
+        f_crc.push_back(octet_string[4]);
+    }
+}
+
+vector<uint8_t> HNS_NTCIP_MessageIDCode::fGetOctetString() const
+{
+    vector<uint8_t> result;
+
+    result.push_back(static_cast<uint8_t>(f_memorytype));
+
+    result.push_back(static_cast<uint8_t>(f_messagenumber >> 8));
+    result.push_back(static_cast<uint8_t>(f_messagenumber & 0xFF));
+
+    result.insert(result.end(),f_crc.begin(),f_crc.end());
+
+    return result;
+}
+
+void HNS_NTCIP_MessageIDCode::fSetMemoryType(const NTCIP_MESSAGE::type_ntcip_message_memory_type &memory_type)
+{
+    f_memorytype = memory_type;
+}
+
+type_ntcip_message_memory_type HNS_NTCIP_MessageIDCode::fGetMemoryType() const
+{
+    return f_memorytype;
+}
+
+void HNS_NTCIP_MessageIDCode::fSetMessageNumber(const uint16_t &message_no)
+{
+    f_messagenumber = message_no;
+}
+
+uint16_t HNS_NTCIP_MessageIDCode::fGetMessageNumber() const
+{
+    return f_messagenumber;
+}
+
+void HNS_NTCIP_MessageIDCode::fSetCRC(const std::vector<uint8_t> &crc)
+{
+    f_crc = crc;
+
+    //force to 2 bytes
+    if(f_crc.size() > 2)
+    {
+        f_crc.resize(2);
+    }
+    else
+    {
+        while(f_crc.size() < 2)
+        {
+            f_crc.push_back(0);
+        }
+    }
+}
+
+void HNS_NTCIP_MessageIDCode::fSetCRC(const uint16_t &crc)
+{
+    vector<unsigned char> temp_vec;
+
+    temp_vec.push_back(static_cast<uint8_t>(crc >> 8));
+    temp_vec.push_back(static_cast<uint8_t>(crc & 0xFF));
+
+    fSetCRC(temp_vec);
+}
+
+vector<uint8_t> HNS_NTCIP_MessageIDCode::fGetCRCAsVector() const
+{
+    return f_crc;
+}
+
+uint16_t HNS_NTCIP_MessageIDCode::fGetCRCAsInt() const
+{
+    uint16_t result = 0;
+
+    if(f_crc.size() >= 2)
+    {
+        result = f_crc[0];
+        result = result << 8;
+        result = result + f_crc[1];
+    }
+
+    return result;
+}
+
 HNS_NTCIP_MessageActivationCode::HNS_NTCIP_MessageActivationCode():
     f_duration(0xFFFF)
   , f_priority(1)
@@ -254,7 +382,7 @@ uint16_t HNS_NTCIP_MessageActivationCode::fGetCRCAsInt() const
     {
         result = f_crc[0];
         result = result << 8;
-        result = result & f_crc[1];
+        result = result + f_crc[1];
     }
 
     return result;

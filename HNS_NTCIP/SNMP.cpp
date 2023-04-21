@@ -1434,6 +1434,7 @@ std::string DataToOID(const std::vector<unsigned char> &input)
                 temp2 = temp2 << 7;
                 temp2 += (temp1 % 0x80);
                 ss << "." << temp2;
+                temp2 = 0;
                 found_multibyte = false;
             }
             else

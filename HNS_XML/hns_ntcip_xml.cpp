@@ -1,6 +1,7 @@
 #include "hns_ntcip_xml.h"
 
 #include <QFile>
+#include <QDebug>
 
 HNS_NTCIP_XML::HNS_NTCIP_XML()
 {
@@ -16,8 +17,9 @@ void HNS_NTCIP_XML::fSetFile(const QString &file)
     f_file = file;
 }
 
-void HNS_NTCIP_XML::fParseNTCIPFile(NTCIP_Node *tree)
+bool HNS_NTCIP_XML::fParseNTCIPFile(NTCIP_Node *tree)
 {
+    bool success = true;
     QStringRef tempstring_ref;
     QFile file(f_file);
     QXmlStreamReader xml;
@@ -48,11 +50,17 @@ void HNS_NTCIP_XML::fParseNTCIPFile(NTCIP_Node *tree)
                     test = xml.attributes();
                     version = xml.attributes().value("","HNS_version").toString();
                     ntcip_version = xml.attributes().value("","version").toString();
-                    fGetNTCIPTree(&xml,tree,"");
+                    success = success && fGetNTCIPTree(&xml,tree,"");
                 }
             }
         }while(!at_end);
     }
+    else
+    {
+        success = false;
+    }
+
+    return success;
 }
 
 void HNS_NTCIP_XML::fWriteNTCIPFile(NTCIP_Node *tree)
@@ -77,13 +85,15 @@ void HNS_NTCIP_XML::fWriteNTCIPFile(NTCIP_Node *tree)
     }
 }
 
-void HNS_NTCIP_XML::fGetNTCIPTree(QXmlStreamReader *xml, NTCIP_Node *tree, const QString &parent_oid)
+bool HNS_NTCIP_XML::fGetNTCIPTree(QXmlStreamReader *xml, NTCIP_Node *tree, const QString &parent_oid)
 {
+    bool success = true;
     bool at_end = false;
     QString tempstring;
     QString end_tag;
     QString new_oid;
     QString datatype_string,access_string,data_string,binary_mode_string;
+    QXmlStreamReader::TokenType test_token;
 
     type_ntcip_data_access access;
     bool binary_mode = false;
@@ -99,7 +109,7 @@ void HNS_NTCIP_XML::fGetNTCIPTree(QXmlStreamReader *xml, NTCIP_Node *tree, const
 
     do
     {
-        xml->readNext();
+        QXmlStreamReader::TokenType next_token = xml->readNext();
         //found a child
         if(xml->isStartElement() && xml->name() == "Node")
         {
@@ -122,9 +132,17 @@ void HNS_NTCIP_XML::fGetNTCIPTree(QXmlStreamReader *xml, NTCIP_Node *tree, const
             access_string = xml->attributes().value("","access").toString();
             binary_mode_string = xml->attributes().value("","binarymode").toString();
 
-            while(!(xml->isCharacters() || xml->isEndElement()))
+            while(!(xml->isCharacters() || xml->isEndElement()) && !at_end)
             {
-                xml->readNext();
+                bool test = xml->isEndDocument();
+                test_token = xml->readNext();
+                if(test_token == QXmlStreamReader::Invalid)
+                {
+                    QXmlStreamReader::Error error = xml->error();
+                    QString tempstring = xml->errorString();
+                    at_end = true;
+                    success = false;
+                }
             }
             if(xml->isCharacters())
             {
@@ -161,11 +179,8 @@ void HNS_NTCIP_XML::fGetNTCIPTree(QXmlStreamReader *xml, NTCIP_Node *tree, const
                 }
             }
 
-            if(datatype_string == "OCTETSTRING")
-            {
-                tree->fSetData(parent_oid.toStdString(),data_string.toStdString(),access,HNS_NTCIP_OCTETSTRING,binary_mode);
-            }
-            else if(datatype_string == "INTEGER" || datatype_string == "COUNTER" || datatype_string == "TIMETICKS")
+
+            if(datatype_string == "INTEGER")
             {
                 tree->fSetData(parent_oid.toStdString(),data_string.toInt(),access,HNS_NTCIP_INTEGER);
             }
@@ -182,9 +197,14 @@ void HNS_NTCIP_XML::fGetNTCIPTree(QXmlStreamReader *xml, NTCIP_Node *tree, const
                 tree->fSetData(parent_oid.toStdString(),data_string.toStdString(),access,HNS_NTCIP_OCTETSTRING,binary_mode);
             }
 
-            while(!(xml->isEndElement() && xml->name() == "Data"))
+            while(!(xml->isEndElement() && xml->name() == "Data") && !at_end)
             {
-                xml->readNext();
+                test_token = xml->readNext();
+                if(test_token == QXmlStreamReader::Invalid)
+                {
+                    at_end = true;
+                    success = false;
+                }
             }
         }
         //look for closing node.  Recursion should take care of children closing tags.
@@ -194,7 +214,15 @@ void HNS_NTCIP_XML::fGetNTCIPTree(QXmlStreamReader *xml, NTCIP_Node *tree, const
         {
             at_end = true;
         }
+        else if(next_token == QXmlStreamReader::Invalid)
+        {
+            //error condition
+            at_end = true;
+            success = false;
+        }
     }while(!at_end);
+
+    return success;
 }
 
 void HNS_NTCIP_XML::fWriteNTCIPBranch(QXmlStreamWriter *xml, NTCIP_Node *tree)

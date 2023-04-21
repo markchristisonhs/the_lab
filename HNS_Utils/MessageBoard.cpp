@@ -26,6 +26,7 @@ HNS_SignBoard_Info::HNS_SignBoard_Info():
   , f_hborder(100)
   , f_specials(HNS_SGNBRD_SPECIAL_NONE)
   , f_special_data(gk_num_specials)
+  , f_ui_mode(HNS_UI_MODE_NORMAL)
 {
 
 }
@@ -154,6 +155,14 @@ HNS_SignBoard_Info HNS_SignBoard_Info::fGetAdjustedBoardInfo() const
     }
 
     return result;
+}
+
+void HNS_SignBoard_Info::fSetUIMode(const int ui_mode)
+{
+    if(ui_mode >= HNS_UI_MODE_NORMAL && ui_mode <= HNS_UI_MODE_TM)
+    {
+        f_ui_mode = ui_mode;
+    }
 }
 
 size_t HNS_SignBoard_Info::fGetBoardHeight() const
@@ -695,7 +704,21 @@ type_hns_signboard_error HNS_SignBoard::fAddElement(HNS_Message_Justified_Elemen
 
                         for(size_t uj = 0; uj < tempstring.size(); uj++)
                         {
-                            temp_char = f_fonts.at(current_font-1).fGetCharacter(tempstring[uj]);
+                            if(temp_element.fGetIsFlashing())
+                            {
+                                if(IsFlashOn(time,temp_element.fGetFlashInfo()))
+                                {
+                                    temp_char = f_fonts.at(current_font-1).fGetCharacter(tempstring[uj]);
+                                }
+                                else
+                                {
+                                    temp_char = f_fonts.at(current_font-1).fGetCharacter(0x20);
+                                }
+                            }
+                            else
+                            {
+                                temp_char = f_fonts.at(current_font-1).fGetCharacter(tempstring[uj]);
+                            }
                             if((static_cast<size_t>(temp_char.fGetHeight()) > fGetCharacterHeight()) || (static_cast<size_t>(temp_char.fGetWidth()) > fGetCharacterWidth()))
                             {
                                 return HNS_SGNBRD_CHAR_SIZE;

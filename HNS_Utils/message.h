@@ -112,6 +112,8 @@ private:
     bool f_on_first;
 };
 
+bool IsFlashOn(const int64_t &time, const HNS_Flashing_Text &flash_info);
+
 class HNS_Message2
 {
 public:
@@ -201,7 +203,7 @@ public:
     type_justification_line fGetLastLineJustification();
     type_justification_page fGetLastPageJustification();
 
-    HNS_SignBoard fGetSignBoard(const int64_t &time = 0, const bool &preview_mode = false);
+    HNS_SignBoard fGetSignBoard(const int64_t &time = 0, const bool &preview_mode = false, const bool &single_page = false);
 
     //Gets a list of all fonts used on this page
     std::vector<int> fGetFontsUsed();
@@ -211,7 +213,7 @@ private:
     //can coexist with full justification
     bool fSortElements();
     //This function puts the text on to the sign board
-    type_hns_signboard_error fUpdateSignBoard(HNS_SignBoard &sign_board, const int64_t &time = 0, const bool &preview_mode = false);
+    type_hns_signboard_error fUpdateSignBoard(HNS_SignBoard &sign_board, const int64_t &time = 0, const bool &preview_mode = false, const bool &single_page = false);
     //Assuming the array is sorted, this returns the last text element
     size_t fLastTextElement() const;
     std::vector<HNS_Message_Justified_Element> f_elements;

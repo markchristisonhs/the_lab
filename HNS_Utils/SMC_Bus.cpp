@@ -740,7 +740,7 @@ void HNS_SMCBus2::fCleanPending()
             {
                 ss.str("");
                 ss << "Command " << hex(f_pending_command->fGetCommand()) << " for address " << hex(f_pending_command->fGetAddress()) << " has timed out at timestamp " << std::dec << Clock_to_Int();
-                LogALine_SMC(ss.str(),"HNS_SMCBus2::fCleanPending");
+//                LogALine_SMC(ss.str(),"HNS_SMCBus2::fCleanPending");
             }
             if(f_pending_command->fIsReturnDataExpected() || f_pending_command->fIsPixOutCommand())
             {

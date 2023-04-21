@@ -113,6 +113,36 @@ void HNS_Time_Input_Stream::fSetTime(const int &hour, const int &minute, const b
     }
 }
 
+int HNS_Time_Input_Stream::fGetHour()
+{
+    return ((f_digits[0] - 0x30) * 10) + (f_digits[1] - 0x30);
+}
+
+int HNS_Time_Input_Stream::fGetHour24()
+{
+    int result;
+    if(fGetHour() == 12)
+    {
+        result = f_is_pm ? 12 : 0;
+    }
+    else
+    {
+        result = fGetHour() + (f_is_pm ? 12 : 0);
+    }
+
+    return result;
+}
+
+int HNS_Time_Input_Stream::fGetMinute()
+{
+    return ((f_digits[2] - 0x30) * 10) + (f_digits[3] - 0x30);
+}
+
+bool HNS_Time_Input_Stream::fGetIsPM()
+{
+    return f_is_pm;
+}
+
 bool HNS_Time_Input_Stream::fProcessStateMachine(const char &digit, const bool &backspace)
 {
     bool success = true;

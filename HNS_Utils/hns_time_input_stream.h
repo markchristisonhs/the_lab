@@ -23,6 +23,10 @@ public:
 
     void fSetTime(const int &hour, const int &minute, const bool &is_pm);
 
+    int fGetHour();
+    int fGetHour24();
+    int fGetMinute();
+    bool fGetIsPM();
 private:
     bool fProcessStateMachine(const char &digit, const bool &backspace = false);
     std::string f_digits;

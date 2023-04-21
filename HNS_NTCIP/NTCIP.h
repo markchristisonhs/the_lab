@@ -27,6 +27,24 @@ typedef enum
     HNS_NTCIP_CHILDNOTFOUND = 0x1
 } type_ntcip_error;
 
+enum ShortErrorMasks
+{
+    HNS_NTCIP_SHORTERROR_COMM = 0x2,
+    HNS_NTCIP_SHORTERROR_POWER = 0x4,
+    HNS_NTCIP_SHORTERROR_DEVICE = 0x8,
+    HNS_NTCIP_SHORTERROR_LAMP = 0x10,
+    HNS_NTCIP_SHORTERROR_PIXEL = 0x20,
+    HNS_NTCIP_SHORTERROR_PHOTOCELL = 0x40,
+    HNS_NTCIP_SHORTERROR_MESSAGE = 0x80,
+    HNS_NTCIP_SHORTERROR_CONTROLLER = 0x100,
+    HNS_NTCIP_SHORTERROR_TEMPERATURE = 0x200,
+    HNS_NTCIP_SHORTERROR_CLIMATECONTROL = 0x400,
+    HNS_NTCIP_SHORTERROR_TEMPERATURE_CRITICAL = 0x800,
+    HNS_NTCIP_SHORTERROR_DRUM = 0x1000,
+    HNS_NTCIP_SHORTERROR_DOOR = 0x2000,
+    HNS_NTCIP_SHORTERROR_HUMIDITY = 0x4000
+};
+
 void SetLogALine_NTCIP_Node(HNS_LogALine2 *logaline);
 
 class NTCIP_Node;
@@ -66,6 +84,11 @@ public:
 
     void fClone(const NTCIP_Node &clone_source, NTCIP_Node *parent = nullptr);
 
+    void fCloneSubTree(NTCIP_Node &clone_source, const std::string &oid);
+
+    void fRememberSave();
+    void fSetNonVolatile(const std::string &oid, const bool &nonvolatile);
+
     void fSetOidNumber(const int &oid_number);
     int fGetOidNumber();
 
@@ -100,6 +123,7 @@ public:
     std::string fGetRawDataAsString() const;
     size_t fGetDataSize() const;
     type_ntcip_data_type fGetDataType() const;
+    std::string fGetDataTypeAsString() const;
 
     //gets data from a child node
     std::vector<unsigned char> fGetData(const std::string &oid, const std::vector<unsigned char> &default_value = std::vector<unsigned char> (), type_ntcip_error *error = nullptr);
@@ -116,6 +140,8 @@ public:
     bool fDoesChildExist(const std::string &oid);
 
     type_ntcip_data_access fGetDataAccess() const;
+
+    bool fIsDirty() const;
 
     bool fGetBinaryMode() const;
     void fClearChildren();
@@ -135,6 +161,7 @@ private:
     NTCIP_Node *fGetChild( const size_t &index);
     NTCIP_Node *fGetChild( const std::string &oid, std::string *last_valid_oid = nullptr);
     NTCIP_Node *fGetChildByName( const std::string &name);
+    NTCIP_Node *fGetParent();
     int f_oid_number;
     std::vector<NTCIP_Node *> f_children;
     NTCIP_Node * f_parent;
@@ -144,7 +171,13 @@ private:
     type_ntcip_data_access f_access;
     bool f_binary_mode;
 
+    //If true, this child must be saved, if false changing this does not trigger a save.  Eventually, the saved database should be more efficient
+    //and not include volatile objects.
+    bool f_is_nonvolatile;
+
     std::string f_name;
+
+    std::vector<unsigned char> f_data_at_last_save;
 
     std::function<SNMP_PDU_Data(void *data, int &data_size, const type_snmp_data_types &data_type, NTCIP_Node *sender, const bool &verify)> f_getter;
     std::function<SNMP_PDU_Data(void *data, const int &data_size, const type_snmp_data_types &data_type, NTCIP_Node *sender, const bool &verify)> f_setter;

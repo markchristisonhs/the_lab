@@ -10,10 +10,26 @@ class HNS_NTCIP_MessageIDCode
 {
 public:
     HNS_NTCIP_MessageIDCode();
+    HNS_NTCIP_MessageIDCode(const std::vector<uint8_t> &octet_string);
+    HNS_NTCIP_MessageIDCode(const NTCIP_MESSAGE::type_ntcip_message_memory_type &memory_type, const uint16_t &message_no, const std::vector<uint8_t> &crc);
+    HNS_NTCIP_MessageIDCode(const NTCIP_MESSAGE::type_ntcip_message_memory_type &memory_type, const uint16_t &message_no, const uint16_t &crc);
+
+    void fSetOctetString(const std::vector<uint8_t> &octet_string);
+    std::vector<uint8_t> fGetOctetString() const;
+
+    void fSetMemoryType(const NTCIP_MESSAGE::type_ntcip_message_memory_type &memory_type);
+    NTCIP_MESSAGE::type_ntcip_message_memory_type fGetMemoryType() const;
+    void fSetMessageNumber(const uint16_t &message_no);
+    uint16_t fGetMessageNumber() const;
+
+    void fSetCRC(const std::vector<uint8_t> &crc);
+    void fSetCRC(const uint16_t &crc);
+    std::vector<uint8_t> fGetCRCAsVector() const;
+    uint16_t fGetCRCAsInt() const;
 private:
     NTCIP_MESSAGE::type_ntcip_message_memory_type f_memorytype;
     uint16_t f_messagenumber;
-    std::vector<unsigned char> f_messagecrc;
+    std::vector<unsigned char> f_crc;
 };
 
 class HNS_NTCIP_MessageActivationCode

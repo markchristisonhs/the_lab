@@ -24,12 +24,18 @@ QString RemoveTagAtEnd(const QString &input, const QString &tag = "");
 QString IsTagAtEnd(const QString &input);
 int IsTagInString(const QString &input,const QString &tag);
 
+QString StripTags(const QString &input);
+
 std::tm ConvertQTimetoSTLTime(const QTime &time);
 QTime ConvertSTLTimetoQTime(const std::tm &time);
 std::tm ConvertQDatetoSTLDate(const QDate &date);
 QDate ConvertSTLDatetoQDate(const std::tm &date);
 
+std::tm ConvertQDateTimetoSTLDateTime(const QDateTime &datetime);
+QDateTime ConvertSTLDateTimetoQDateTime(const std::tm &datetime);
+
 //flip time is in ms.  So for a half second flip time, this should be 500
 QString AnimationToMulti(const QVector<int> &animation, const int &flip_time = 500);
+QString AnimationToMulti(const std::vector<int> &animation, const int &flip_time = 500);
 
 #endif // HNS_QT_TOOLKIT_H

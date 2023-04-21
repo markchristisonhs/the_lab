@@ -54,7 +54,7 @@ bool HNS_Radar_Police_Speed::operator != (const HNS_Radar_Police_Speed &rhs) con
     return !(*this == rhs);
 }
 
-int HNS_Radar_Police_Speed::fGetMinimumSpeed()
+int HNS_Radar_Police_Speed::fGetMinimumSpeed() const
 {
     return f_minimum_speed;
 }
@@ -64,7 +64,7 @@ void HNS_Radar_Police_Speed::fSetMinimumSpeed(const int &minimum_speed)
     f_minimum_speed = minimum_speed;
 }
 
-int HNS_Radar_Police_Speed::fGetViolatorSpeed()
+int HNS_Radar_Police_Speed::fGetViolatorSpeed() const
 {
     return f_violator_speed;
 }
@@ -74,7 +74,7 @@ void HNS_Radar_Police_Speed::fSetViolatorSpeed(const int &violator_speed)
     f_violator_speed = violator_speed;
 }
 
-int HNS_Radar_Police_Speed::fGetMaximumSpeed()
+int HNS_Radar_Police_Speed::fGetMaximumSpeed() const
 {
     return f_maximum_speed;
 }
@@ -132,6 +132,36 @@ void HNS_Radar_Police_Speed::fSetSpeed(const int &minimum_speed, const int &viol
     f_minimum_speed = minimum_speed;
     f_violator_speed = violator_speed;
     f_maximum_speed = maximum_speed;
+}
+
+HNS_Radar_Settings::HNS_Radar_Settings() :
+    f_legacy_speed(0)
+  , f_mode(HNS_RADAR_MODE_NORMAL)
+  , f_units(HNS_RADAR_UNITS_MPH)
+{
+
+}
+
+void HNS_Radar_Settings::fSetPoliceMessages(const std::string &under_min_message,
+                                            const std::string &under_vio_message,
+                                            const std::string &over_vio_message,
+                                            const std::string &over_max_message)
+{
+    fSetUnderMinMessage(under_min_message);
+    fSetUnderVioMessage(under_vio_message);
+    fSetOverVioMessage(over_vio_message);
+    fSetOverMaxMessage(over_max_message);
+}
+
+void HNS_Radar_Settings::fGetPoliceMessages(std::string &under_min_message,
+                                            std::string &under_vio_message,
+                                            std::string &over_vio_message,
+                                            std::string &over_max_message) const
+{
+    under_min_message = fGetUnderMinMessage();
+    under_vio_message = fGetUnderVioMessage();
+    over_vio_message = fGetOverVioMessage();
+    over_max_message = fGetOverMaxMessage();
 }
 
 HNS_Radar_Strobe::HNS_Radar_Strobe():

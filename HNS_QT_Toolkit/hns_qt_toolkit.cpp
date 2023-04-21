@@ -269,6 +269,40 @@ int IsTagInString(const QString &input, const QString &tag)
     return input.indexOf(tag,0,Qt::CaseInsensitive);
 }
 
+QString StripTags(const QString &input)
+{
+    QString result = input;
+//    bool found_tag = false;
+
+//    //step 1, find the first tag opening.  Loop until a tag is found
+//    qsizetype turtle = 0, turtle_end = 0;
+//    while(!found_tag)
+//    {
+//        turtle = result.indexOf(QLatin1Char('['));
+//        //If there is no '[' character then there are no tags in this string
+//        if(turtle < 0)
+//        {
+//            break;
+//        }
+//        //step 2, verify that this is not a '[[' which is a '[' according to NTCIP 1203.
+//        if(turtle < result.size() - 1)
+//        {
+//            if(result[turtle+1] == QLatin1Char('['));
+//            {
+
+//            }
+//        }
+//    }
+
+//    if(found_tag)
+//    {
+//        turtle_end = result.indexOf(QLatin1Char(']'));
+
+//    }
+
+    return result;
+}
+
 std::tm ConvertQTimetoSTLTime(const QTime &time)
 {
     std::tm result;
@@ -309,6 +343,31 @@ QDate ConvertSTLDatetoQDate(const std::tm &date)
     return result;
 }
 
+std::tm ConvertQDateTimetoSTLDateTime(const QDateTime &datetime)
+{
+    std::tm result;
+
+    result.tm_mon = datetime.date().month() - 1;
+    result.tm_mday = datetime.date().day();
+    result.tm_year = datetime.date().year() - 1900;
+
+    result.tm_hour = datetime.time().hour();
+    result.tm_min = datetime.time().minute();
+    result.tm_sec = datetime.time().second();
+
+    return result;
+}
+
+QDateTime ConvertSTLDateTimetoQDateTime(const std::tm &datetime)
+{
+    QDateTime result;
+
+    result.setDate(QDate(datetime.tm_year+1900,datetime.tm_mon+1,datetime.tm_mday));
+    result.setTime(QTime(datetime.tm_hour,datetime.tm_min,datetime.tm_sec));
+
+    return result;
+}
+
 QString AnimationToMulti(const QVector<int> &animation, const int &flip_time)
 {
     QString result = QString("[pt%1o0]").arg(max(1,(flip_time/100)));
@@ -323,4 +382,9 @@ QString AnimationToMulti(const QVector<int> &animation, const int &flip_time)
     }
 
     return result;
+}
+
+QString AnimationToMulti(const vector<int> &animation, const int &flip_time)
+{
+    return AnimationToMulti(QVector<int>::fromStdVector(animation), flip_time);
 }

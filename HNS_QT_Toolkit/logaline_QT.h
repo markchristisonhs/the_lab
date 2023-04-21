@@ -23,7 +23,6 @@ public:
 private:
     QList <QString> f_lines;
     QString f_file_path;
-    QFile *f_file;
     //if true, prepend an ISO standard time stamp
     bool f_timestamp;
 signals:

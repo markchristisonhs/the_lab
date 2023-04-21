@@ -33,17 +33,24 @@ bool IsFlashOn(const int64_t &time, const HNS_Flashing_Text &flash_info)
 {
     bool isTextOn = false;
 
-    unsigned int flash_period = (flash_info.fGetFlashOn() + flash_info.fGetFlashOn()) * 100;
+    unsigned int flash_period = (flash_info.fGetFlashOn() + flash_info.fGetFlashOff()) * 100;
 
-    int64_t adjusted_time = time % flash_period;
-
-    if(flash_info.fGetOnFirst())
+    if(flash_period > 0)
     {
-        isTextOn = adjusted_time < (flash_info.fGetFlashOn() * 100);
+        int64_t adjusted_time = time % flash_period;
+
+        if(flash_info.fGetOnFirst())
+        {
+            isTextOn = adjusted_time < (flash_info.fGetFlashOn() * 100);
+        }
+        else
+        {
+            isTextOn = adjusted_time >= (flash_info.fGetFlashOff() * 100);
+        }
     }
     else
     {
-        isTextOn = adjusted_time >= (flash_info.fGetFlashOff() * 100);
+        isTextOn = true;
     }
 
     return isTextOn;
@@ -212,6 +219,8 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
     HNS_Font temp_font;
     HNS_Flashing_Text current_flash_info;
     bool on_first_temp;
+    bool use_default_flash_on = false;
+    bool use_default_flash_off = false;
     bool flash_enabled = false;
     size_t char_spacing = 1;
     ssize_t line_spacing = -1;
@@ -401,6 +410,8 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                     //Flashing tag
                     if(toupper(*character) == 'L')
                     {
+                        use_default_flash_on = false;
+                        use_default_flash_off = false;
                         ++character;
                         if(toupper(*character) == 'T')
                         {
@@ -409,6 +420,12 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                         else if(toupper(*character) == 'O')
                         {
                             on_first_temp = false;
+                        }
+                        //neither t nor o are specified, so use defaults
+                        else if(*character == ']')
+                        {
+                            use_default_flash_on = true;
+                            use_default_flash_off = true;
                         }
                         else
                         {
@@ -419,18 +436,44 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                         }
                         if(!fail)
                         {
-                            temp_string = "";
-                            do
+                            if(use_default_flash_off && use_default_flash_on)
                             {
-                                ++character;
-                                if(isdigit(*character))
+                                current_flash_info.fFlashOn() = f_default_flash_time_on;
+                                current_flash_info.fFlashOff() = f_default_flash_time_off;
+
+                                //already existing text add it as an element to the page.
+                                if(!text.empty())
                                 {
-                                    temp_string += *character;
+                                    if(f_pages.size() == 0)
+                                    {
+                                        //this is actually the first page.
+                                        fAddPage(current_time_on,current_time_off);
+                                    }
+                                    temp_element = HNS_Message_Element2(text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
+                                    sign_brd_error = fAddElementToPage(temp_element, current_line_justification, current_page_justification);
+                                    text = "";
+                                    if(sign_brd_error != HNS_SGNBRD_ERROR_NONE)
+                                    {
+                                        if(sign_brd_error == HNS_SGNBRD_ERROR_TOOTALL || sign_brd_error == HNS_SGNBRD_ERROR_TOOWIDE)
+                                        {
+                                            if(sign_brd_error == HNS_SGNBRD_ERROR_TOOTALL)
+                                            {
+                                                temp_too_tall = true;
+                                            }
+                                            error = HNS_MULTI_PARSER_SYNTAX_ERROR;
+                                            my_error = HNS_MULTI_SYNTAX_ERROR_TEXTTOOBIG;
+                                            error_pos = character - multi_string.begin() - 1;
+                                            fail = true;
+                                        }
+                                    }
                                 }
-                            }while((isdigit(*character)) && character != multi_string.end());
-                            if(toupper(*character) == (on_first_temp ? 'O' : 'T'))
+
+                                flash_enabled = true;
+                                fsm_state = HNS_MULTI_PARSER_STATE_TEXT;
+                            }
+                            else
                             {
-                                temp_string += ",";
+                                temp_string = "";
                                 do
                                 {
                                     ++character;
@@ -439,80 +482,103 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                         temp_string += *character;
                                     }
                                 }while((isdigit(*character)) && character != multi_string.end());
-                                if(*character == ']')
+
+                                if(toupper(*character) == (on_first_temp ? 'O' : 'T'))
                                 {
-                                    //already existing text add it as an element to the page.
-                                    if(!text.empty())
+                                    temp_string += ",";
+                                    do
                                     {
-                                        if(f_pages.size() == 0)
+                                        ++character;
+                                        if(isdigit(*character))
                                         {
-                                            //this is actually the first page.
-                                            fAddPage(current_time_on,current_time_off);
+                                            temp_string += *character;
                                         }
-                                        temp_element = HNS_Message_Element2(text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
-                                        sign_brd_error = fAddElementToPage(temp_element, current_line_justification, current_page_justification);
-                                        text = "";
-                                        if(sign_brd_error != HNS_SGNBRD_ERROR_NONE)
+                                    }while((isdigit(*character)) && character != multi_string.end());
+                                    if(*character == ']')
+                                    {
+                                        //already existing text add it as an element to the page.
+                                        if(!text.empty())
                                         {
-                                            if(sign_brd_error == HNS_SGNBRD_ERROR_TOOTALL || sign_brd_error == HNS_SGNBRD_ERROR_TOOWIDE)
+                                            if(f_pages.size() == 0)
                                             {
-                                                if(sign_brd_error == HNS_SGNBRD_ERROR_TOOTALL)
+                                                //this is actually the first page.
+                                                fAddPage(current_time_on,current_time_off);
+                                            }
+                                            temp_element = HNS_Message_Element2(text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
+                                            sign_brd_error = fAddElementToPage(temp_element, current_line_justification, current_page_justification);
+                                            text = "";
+                                            if(sign_brd_error != HNS_SGNBRD_ERROR_NONE)
+                                            {
+                                                if(sign_brd_error == HNS_SGNBRD_ERROR_TOOTALL || sign_brd_error == HNS_SGNBRD_ERROR_TOOWIDE)
                                                 {
-                                                    temp_too_tall = true;
+                                                    if(sign_brd_error == HNS_SGNBRD_ERROR_TOOTALL)
+                                                    {
+                                                        temp_too_tall = true;
+                                                    }
+                                                    error = HNS_MULTI_PARSER_SYNTAX_ERROR;
+                                                    my_error = HNS_MULTI_SYNTAX_ERROR_TEXTTOOBIG;
+                                                    error_pos = character - multi_string.begin() - 1;
+                                                    fail = true;
                                                 }
-                                                error = HNS_MULTI_PARSER_SYNTAX_ERROR;
-                                                my_error = HNS_MULTI_SYNTAX_ERROR_TEXTTOOBIG;
-                                                error_pos = character - multi_string.begin() - 1;
-                                                fail = true;
                                             }
                                         }
-                                    }
 
-                                    numbers = HNS_string_to_int_vector(temp_string,',',temp_error);
-                                    if(on_first_temp)
-                                    {
-                                        if(numbers.size() > 0)
+                                        numbers = HNS_string_to_int_vector(temp_string,',',temp_error);
+                                        if(on_first_temp)
                                         {
-                                            current_flash_info.fFlashOn() = numbers[0];
+                                            if(numbers.size() > 0)
+                                            {
+                                                current_flash_info.fFlashOn() = numbers[0];
+                                            }
+                                            else
+                                            {
+                                                current_flash_info.fFlashOn() = f_default_flash_time_on;
+                                            }
+
+                                            if(numbers.size() > 1)
+                                            {
+                                                current_flash_info.fFlashOff() = numbers[1];
+                                            }
+                                            else
+                                            {
+                                                current_flash_info.fFlashOff() = f_default_flash_time_off;
+                                            }
+                                            current_flash_info.fSetOnFirst(true);
                                         }
                                         else
                                         {
-                                            current_flash_info.fFlashOn() = f_default_flash_time_on;
-                                        }
+                                            if(numbers.size() > 1)
+                                            {
+                                                current_flash_info.fFlashOn() = numbers[1];
+                                            }
+                                            else
+                                            {
+                                                current_flash_info.fFlashOn() = f_default_flash_time_on;
+                                            }
 
-                                        if(numbers.size() > 1)
-                                        {
-                                            current_flash_info.fFlashOff() = numbers[1];
+                                            if(numbers.size() > 0)
+                                            {
+                                                current_flash_info.fFlashOff() = numbers[0];
+                                            }
+                                            else
+                                            {
+                                                current_flash_info.fFlashOff() = f_default_flash_time_off;
+                                            }
+                                            current_flash_info.fSetOnFirst(false);
                                         }
-                                        else
+                                        if(current_flash_info.fGetFlashOff() > 0 && current_flash_info.fGetFlashOn() > 0)
                                         {
-                                            current_flash_info.fFlashOff() = f_default_flash_time_off;
+                                            flash_enabled = true;
                                         }
-                                        current_flash_info.fSetOnFirst(true);
+                                        fsm_state = HNS_MULTI_PARSER_STATE_TEXT;
                                     }
                                     else
                                     {
-                                        if(numbers.size() > 1)
-                                        {
-                                            current_flash_info.fFlashOn() = numbers[1];
-                                        }
-                                        else
-                                        {
-                                            current_flash_info.fFlashOn() = f_default_flash_time_on;
-                                        }
-
-                                        if(numbers.size() > 0)
-                                        {
-                                            current_flash_info.fFlashOff() = numbers[0];
-                                        }
-                                        else
-                                        {
-                                            current_flash_info.fFlashOff() = f_default_flash_time_off;
-                                        }
-                                        current_flash_info.fSetOnFirst(false);
+                                        error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
+                                        my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
+                                        error_pos = character - multi_string.begin() - 1;
+                                        fail = true;
                                     }
-                                    flash_enabled = true;
-                                    fsm_state = HNS_MULTI_PARSER_STATE_TEXT;
                                 }
                                 else
                                 {
@@ -521,13 +587,6 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                     error_pos = character - multi_string.begin() - 1;
                                     fail = true;
                                 }
-                            }
-                            else
-                            {
-                                error = HNS_MULTI_PARSER_INCOMPLETE_TAG;
-                                my_error = HNS_MULTI_SYNTAX_ERROR_UNSUPPORTEDTAG;
-                                error_pos = character - multi_string.begin() - 1;
-                                fail = true;
                             }
                         }
                     }
@@ -2161,7 +2220,7 @@ HNS_SignBoard HNS_Message2::fGetSignBoard(const int64_t &time, size_t *page_disp
 
     if(index < f_pages.size())
     {
-        result = f_pages[index].fGetSignBoard(time_in_page);
+        result = f_pages[index].fGetSignBoard(time_in_page,false,f_pages.size() == 1);
     }
 
     return result;
@@ -2208,23 +2267,30 @@ size_t HNS_Message2::fGetPageIndexFromTime(const int64_t &time, unsigned int &ti
 
     if(message_period > 0)
     {
-        time_in_page_temp = search_time = adjusted_time = time % message_period;
-
-        for(size_t ui=0;ui<f_pages.size();ui++)
+        if(f_pages.size() > 1)
         {
-            search_time -= static_cast<unsigned int>(f_pages[ui].fPageTimeOn()*1000.0);
-            search_time -= static_cast<unsigned int>(f_pages[ui].fPageTimeOff()*1000.0);
+            time_in_page_temp = search_time = adjusted_time = time % message_period;
 
-            if(search_time < 0)
+            for(size_t ui=0;ui<f_pages.size();ui++)
             {
-                result = ui;
-                time_in_page = time_in_page_temp;
-                break;
+                search_time -= static_cast<unsigned int>(f_pages[ui].fPageTimeOn()*1000.0);
+                search_time -= static_cast<unsigned int>(f_pages[ui].fPageTimeOff()*1000.0);
+
+                if(search_time < 0)
+                {
+                    result = ui;
+                    time_in_page = time_in_page_temp;
+                    break;
+                }
+                else
+                {
+                    time_in_page_temp = search_time;
+                }
             }
-            else
-            {
-                time_in_page_temp = search_time;
-            }
+        }
+        else
+        {
+            time_in_page = time;
         }
     }
 
@@ -2255,8 +2321,9 @@ void HNS_Message2::fResetMulti()
 }
 
 HNS_Message_Page2::HNS_Message_Page2():
-    f_page_time_on(2.0),
-    f_page_time_off(0.0)
+    f_page_time_on(HNS_Message2::fGetDefaultPageTimeOn()),
+    f_page_time_off(HNS_Message2::fGetDefaultPageTimeOff()),
+    f_signboard_info(HNS_Message2::fGetDefaultSignBoardInfo())
 {
 
 }
@@ -2364,10 +2431,10 @@ type_justification_page HNS_Message_Page2::fGetLastPageJustification()
     return f_elements[fLastTextElement()].fGetPageJustification();
 }
 
-HNS_SignBoard HNS_Message_Page2::fGetSignBoard(const int64_t &time, const bool &preview_mode)
+HNS_SignBoard HNS_Message_Page2::fGetSignBoard(const int64_t &time, const bool &preview_mode, const bool &single_page)
 {
     HNS_SignBoard result(f_signboard_info);
-    fUpdateSignBoard(result,time,preview_mode);
+    fUpdateSignBoard(result,time,preview_mode,single_page);
     return result;
 }
 
@@ -2407,14 +2474,14 @@ bool HNS_Message_Page2::fSortElements()
     return success;
 }
 
-type_hns_signboard_error HNS_Message_Page2::fUpdateSignBoard(HNS_SignBoard &sign_board, const int64_t &time, const bool &preview_mode)
+type_hns_signboard_error HNS_Message_Page2::fUpdateSignBoard(HNS_SignBoard &sign_board, const int64_t &time, const bool &preview_mode, const bool &single_page)
 {
     int test = 0;
     type_hns_signboard_error error = HNS_SGNBRD_ERROR_NONE;
 
     sign_board.fClearBoard();
     //MSC20220114 Making this less than or equals I think should eliminate blanks during one page messages and messages with no page off time.
-    if(time <= static_cast<int64_t>(f_page_time_on*1000.0))
+    if(time <= static_cast<int64_t>(f_page_time_on*1000.0) || single_page)
     {
         for(size_t ui=0;ui<f_elements.size();ui++)
         {
@@ -2855,6 +2922,7 @@ size_t HNS_Message_Justified_Element::fGetNumLines() const
         }
         if(current_line != f_elements[ui].fGetLineNo())
         {
+            current_line = f_elements[ui].fGetLineNo();
             num_lines++;
         }
     }

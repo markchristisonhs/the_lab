@@ -75,6 +75,7 @@ NTCIP_Node::NTCIP_Node(NTCIP_Node *parent)
     f_data_type = HNS_NTCIP_INTEGER;
     f_access = HNS_NTCIP_READ;
     f_binary_mode = false;
+    f_is_nonvolatile = true;
     f_parent = parent;
 }
 
@@ -84,6 +85,7 @@ NTCIP_Node::NTCIP_Node(const int &oid_number, NTCIP_Node *parent)
     f_data_type = HNS_NTCIP_INTEGER;
     f_access = HNS_NTCIP_READ;
     f_binary_mode = false;
+    f_is_nonvolatile = true;
     f_parent = parent;
 }
 
@@ -123,6 +125,72 @@ void NTCIP_Node::fClone(const NTCIP_Node &clone_source, NTCIP_Node *parent)
     {
         f_children[i] = new NTCIP_Node();
         f_children[i]->fClone(*clone_source.f_children[i],this);
+    }
+}
+
+void NTCIP_Node::fCloneSubTree(NTCIP_Node &clone_source, const std::string &oid)
+{
+    NTCIP_Node *sub_tree = clone_source.fGetChild(oid);
+    NTCIP_Node *copy_dest = fGetChild(oid);
+    NTCIP_Node *dest_parent = nullptr;
+    if(copy_dest != nullptr)
+    {
+        dest_parent = copy_dest->fGetParent();
+    }
+
+    if(dest_parent != nullptr)
+    {
+        copy_dest->fClone(sub_tree,dest_parent);
+    }
+}
+
+void NTCIP_Node::fRememberSave()
+{
+    if(fGetNumChildren() > 0)
+    {
+        for(size_t ui=0; ui<fGetNumChildren(); ui++)
+        {
+            f_children[ui]->fRememberSave();
+        }
+    }
+    else
+    {
+        f_data_at_last_save = f_data;
+    }
+}
+
+void NTCIP_Node::fSetNonVolatile(const std::string &oid, const bool &nonvolatile)
+{
+    istringstream input(oid);
+    string temp_oid;
+    int n;
+    char temp;
+
+    input >> n >> temp;
+
+    //if this is not the last number, then there are further children to search
+    if(input.tellg() != -1)
+    {
+        if(n == f_oid_number)
+        {
+            temp_oid = string(input.str().substr(input.tellg()));
+            input >> n;
+            for(size_t i=0;i<f_children.size();i++)
+            {
+                if(f_children[i]->fGetOidNumber() == n)
+                {
+                    f_children[i]->fSetNonVolatile(temp_oid,nonvolatile);
+                }
+            }
+        }
+    }
+    //this is the last number, set data here
+    else
+    {
+        if(n == f_oid_number)
+        {
+            f_is_nonvolatile = nonvolatile;
+        }
     }
 }
 
@@ -514,6 +582,29 @@ type_ntcip_data_type NTCIP_Node::fGetDataType() const
     return f_data_type;
 }
 
+string NTCIP_Node::fGetDataTypeAsString() const
+{
+    string result = "Integer";
+
+    switch(f_data_type)
+    {
+    case HNS_NTCIP_INTEGER:
+        result = "Integer";
+        break;
+    case HNS_NTCIP_OCTETSTRING:
+        result = "OctetString";
+        break;
+    case HNS_NTCIP_COUNTER:
+        result = "Counter";
+        break;
+    case HNS_NTCIP_TIMETICKS:
+        result = "TimeTicks";
+        break;
+    }
+
+    return result;
+}
+
 vector<unsigned char> NTCIP_Node::fGetData(const string &oid, const vector<unsigned char> &default_value, type_ntcip_error *error)
 {
     NTCIP_Node *child_node = fGetChild(oid);
@@ -746,6 +837,11 @@ NTCIP_Node *NTCIP_Node::fGetChildByName( const std::string &name)
     return result;
 }
 
+NTCIP_Node *NTCIP_Node::fGetParent()
+{
+    return f_parent;
+}
+
 string NTCIP_Node::fGetName() const
 {
     return f_name;
@@ -754,6 +850,46 @@ string NTCIP_Node::fGetName() const
 type_ntcip_data_access NTCIP_Node::fGetDataAccess() const
 {
     return f_access;
+}
+
+bool NTCIP_Node::fIsDirty() const
+{
+    bool result = false;
+
+    if(fGetNumChildren() > 0)
+    {
+        for(size_t ui=0; ui<f_children.size(); ui++)
+        {
+            result = result || f_children[ui]->fIsDirty();
+            if(result)
+            {
+                break;
+            }
+        }
+    }
+    else
+    {
+        if(f_is_nonvolatile)
+        {
+            if(f_data.size() != f_data_at_last_save.size())
+            {
+                result = true;
+            }
+            else
+            {
+                for(size_t ui=0; ui<f_data.size();ui++)
+                {
+                    result = result || (f_data[ui] != f_data_at_last_save[ui]);
+                    if(result)
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    return result;
 }
 
 bool NTCIP_Node::fGetBinaryMode() const
