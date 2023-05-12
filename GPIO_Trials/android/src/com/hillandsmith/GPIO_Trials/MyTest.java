@@ -18,6 +18,15 @@ import android.util.Log;
 public class MyTest extends IOIOService {
     private static native void inputChanged(int port, int val);
 
+    private static void safeInputChanged(int port, int val) {
+        try{
+            inputChanged(port,val);
+        }
+        catch (java.lang.UnsatisfiedLinkError e){
+            Log.d("MyTest","inputChanged is not implemented");
+        }
+    }
+
     private static boolean m_value_11 = false;
     private static boolean m_value_12 = false;
     private static boolean m_value_13 = false;
@@ -113,28 +122,28 @@ public class MyTest extends IOIOService {
                 btemp = mPin_11.read();
                 if(btemp != m_value_11)
                 {
-                    inputChanged(11, btemp ? 1 : 0);
+                    safeInputChanged(11, btemp ? 1 : 0);
                     m_value_11 = btemp;
                 }
 
                 btemp = mPin_12.read();
                 if(btemp != m_value_12)
                 {
-                    inputChanged(12, btemp ? 1 : 0);
+                    safeInputChanged(12, btemp ? 1 : 0);
                     m_value_12 = btemp;
                 }
 
                 btemp = mPin_13.read();
                 if(btemp != m_value_13)
                 {
-                    inputChanged(13, btemp ? 1 : 0);
+                    safeInputChanged(13, btemp ? 1 : 0);
                     m_value_13 = btemp;
                 }
 
                 btemp = mPin_14.read();
                 if(btemp != m_value_14)
                 {
-                    inputChanged(14, btemp ? 1 : 0);
+                    safeInputChanged(14, btemp ? 1 : 0);
                     m_value_14 = btemp;
                 }
             }

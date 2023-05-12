@@ -75,6 +75,7 @@ public:
 
     //page == -1 means to set the page time for the currently selected page.
     void fSetPageTimes(const double &pagetime_on, const double &pagetime_off, const int &page = -1);
+    void fGetPageTimes(double &pagetime_on, double &pagetime_off, const int &page = -1);
 
     void fGenerateFontTest(const size_t &font_no);
 

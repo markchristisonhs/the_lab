@@ -2565,7 +2565,10 @@ HNS_Bitmap HNS_Message_Justified_Element::fGetBitmap(const vector<HNS_Font> *fon
 
     if(fIsGraphic())
     {
-        result = f_elements[0].fGetBitmap(fonts,graphics);
+        if(IsFlashOn(time,f_elements[0].fGetFlashInfo()))
+        {
+            result = f_elements[0].fGetBitmap(fonts,graphics);
+        }
     }
     else
     {

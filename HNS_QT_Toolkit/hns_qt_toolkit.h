@@ -24,8 +24,6 @@ QString RemoveTagAtEnd(const QString &input, const QString &tag = "");
 QString IsTagAtEnd(const QString &input);
 int IsTagInString(const QString &input,const QString &tag);
 
-QString StripTags(const QString &input);
-
 std::tm ConvertQTimetoSTLTime(const QTime &time);
 QTime ConvertSTLTimetoQTime(const std::tm &time);
 std::tm ConvertQDatetoSTLDate(const QDate &date);

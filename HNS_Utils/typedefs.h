@@ -51,6 +51,7 @@ typedef enum
     HNS_DATA_NEW_GPIO = 0x800,
     HNS_DATA_ENTER_LVD = 0x1000,
     HNS_DATA_NEW_DISPLAY = 0x2000,
+    HNS_DATA_NEW_AUXIO = 0x4000,
     HNS_DATA_ALL = 0xFFFFFFFF
 } type_change_flags;
 

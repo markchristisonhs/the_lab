@@ -115,11 +115,18 @@ void HNS_Message_Preview::fAddMessage(const QString &multi, const bool &do_updat
 
 int HNS_Message_Preview::fInsertMessage(const QString &multi, const int &pos, const bool &do_update)
 {
+    fUpdate(true);
     QVector<QString> temp_pages = fSplitPages(multi);
     int index = pos;
-    if(pos == -1)
+    size_t test = 0;
+    if(index < 0)
     {
         index = f_current_page;
+    }
+
+    if(static_cast<size_t>(index) < f_current_message.fGetNumPages())
+    {
+        test = f_current_message.fGetPage(index).fGetNumElements();
     }
 
     if(index >= 0 && index < f_page_strings.size())
@@ -127,12 +134,16 @@ int HNS_Message_Preview::fInsertMessage(const QString &multi, const int &pos, co
         //insert at end.
         if(index == f_page_strings.size()-1)
         {
-            if(f_page_strings[index].isEmpty())
+            if(f_current_message.fGetPage(index).fGetNumElements() == 0)
             {
                 f_page_strings.remove(index);
             }
             else
             {
+                if(fIsFlashTagOpen())
+                {
+                    fCloseFlashTag();
+                }
                 f_current_page = index + 1;
             }
             f_page_strings.append(temp_pages);
@@ -634,6 +645,24 @@ void HNS_Message_Preview::fSetPageTimes(const double &pagetime_on, const double 
     fUpdate(false);
 }
 
+void HNS_Message_Preview::fGetPageTimes(double &pagetime_on, double &pagetime_off, const int &page)
+{
+    int page_select = page;
+
+    if(page_select < 0)
+    {
+        page_select = f_current_page;
+    }
+
+    fUpdate(true);
+
+    if(static_cast<size_t>(page_select) < f_current_message.fGetNumPages())
+    {
+        pagetime_on = f_current_message.fGetPageTimeOn(page_select);
+        pagetime_off = f_current_message.fGetPageTimeOff(page_select);
+    }
+}
+
 void HNS_Message_Preview::paintEvent(QPaintEvent */*event*/)
 {
     static double width_ratio = 0.95;
@@ -649,6 +678,10 @@ void HNS_Message_Preview::paintEvent(QPaintEvent */*event*/)
         {
             QImage preview = f_image.scaled(size().width(),size().height());
             painter.drawImage(0,0,preview);
+        }
+        else
+        {
+            qDebug() << "Null image to be painted";
         }
     }
     else if(signboard_info.fGetType() == HNS_BRD_TRAILER_CHARACTER_BOARD)

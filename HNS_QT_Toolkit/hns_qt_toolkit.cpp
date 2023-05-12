@@ -269,40 +269,6 @@ int IsTagInString(const QString &input, const QString &tag)
     return input.indexOf(tag,0,Qt::CaseInsensitive);
 }
 
-QString StripTags(const QString &input)
-{
-    QString result = input;
-//    bool found_tag = false;
-
-//    //step 1, find the first tag opening.  Loop until a tag is found
-//    qsizetype turtle = 0, turtle_end = 0;
-//    while(!found_tag)
-//    {
-//        turtle = result.indexOf(QLatin1Char('['));
-//        //If there is no '[' character then there are no tags in this string
-//        if(turtle < 0)
-//        {
-//            break;
-//        }
-//        //step 2, verify that this is not a '[[' which is a '[' according to NTCIP 1203.
-//        if(turtle < result.size() - 1)
-//        {
-//            if(result[turtle+1] == QLatin1Char('['));
-//            {
-
-//            }
-//        }
-//    }
-
-//    if(found_tag)
-//    {
-//        turtle_end = result.indexOf(QLatin1Char(']'));
-
-//    }
-
-    return result;
-}
-
 std::tm ConvertQTimetoSTLTime(const QTime &time)
 {
     std::tm result;
