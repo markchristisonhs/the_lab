@@ -58,6 +58,8 @@ typedef enum
 
 class HNS_Board;
 class HNS_Message_Justified_Element;
+class HNS_Message_Page_Justified_Element;
+class HNS_Graphical_Element;
 
 enum
 {
@@ -316,7 +318,9 @@ public:
     static void fSetFonts(const std::vector<HNS_Font> &fonts);
     static void fSetGraphics(const std::vector<HNS_Graphic> &graphics);
 
-    type_hns_signboard_error fAddElement(HNS_Message_Justified_Element &element, const int64_t &time = 0, const bool &preview_mode = false);
+//    type_hns_signboard_error fAddElement(HNS_Message_Justified_Element &element, const int64_t &time = 0, const bool &preview_mode = false);
+    type_hns_signboard_error fAddElement(HNS_Message_Page_Justified_Element element, const int64_t &time = 0, const bool &preview_mode = false);
+    type_hns_signboard_error fAddGraphic(HNS_Graphical_Element element, const int64_t &time = 0, const bool &preview_mode = false);
 
     void fClearBoard();
 
@@ -369,6 +373,9 @@ private:
     static std::vector<HNS_Graphic> f_graphics;
 
     HNS_SignBoard_Info f_signboard_info;
+
+    friend class HNS_Graphical_Element;
+    friend class HNS_Message_Page_Justified_Element;
 };
 
 class HNS_DisplayBuffer

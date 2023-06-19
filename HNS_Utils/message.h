@@ -177,9 +177,8 @@ public:
     int fGetCurrentLineSpacing() const {return f_current_line_spacing;}
     int fGetCurrentCharSpacing() const {return f_current_char_spacing;}
 private:
-    void fAddPage(const double &page_time_on, const double &page_time_off);
-    type_hns_signboard_error fAddElementToPage(HNS_Message_Element2 &element, const type_justification_line &line_justification, const type_justification_page &page_justification, const bool &newline = false, const ssize_t &line_spacing = -1);
-    type_hns_signboard_error fAddTextElementToPage(const std::string &text, const bool newline = false, const ssize_t &line_spacing = -1);
+    void fAddPage();
+    type_hns_signboard_error fAddElementToPage(HNS_Message_Element2 &element, const bool &newline = false);
     type_hns_signboard_error fAddGraphicToPage(const HNS_Graphical_Element &graphic);
     void fResetMulti();
     size_t fGetPageIndexFromTime(const int64_t &time, unsigned int &time_in_page);
@@ -219,9 +218,8 @@ public:
     HNS_Message_Page2(const HNS_Message2 *parent);
     HNS_Message_Page2(const HNS_Message2 *parent, const double &page_time_on, const double &page_time_off,const HNS_SignBoard_Info &sign_board_info);
 
-    void fNewJustification(const type_justification_line &line_justification, const type_justification_page &page_justification);
-    type_hns_signboard_error fAddElement(HNS_Message_Element2 &element,const type_justification_line &line_justification, const type_justification_page &page_justification, const bool &newline = false, const ssize_t &line_spacing = -1, const ssize_t &char_spacing = -1);
-    type_hns_signboard_error fAddText(const std::string &text, const bool &newline = false, const ssize_t &line_spacing = -1, const ssize_t &char_spacing = -1);
+//    void fNewJustification(const type_justification_line &line_justification, const type_justification_page &page_justification);
+    type_hns_signboard_error fAddElement(HNS_Message_Element2 &element, const bool &newline = false);
     type_hns_signboard_error fAddGraphic(const HNS_Graphical_Element &graphic);
     size_t fGetNumElements() const;
     void fAddNewline();
@@ -263,7 +261,10 @@ public:
     HNS_Graphical_Element(const HNS_Message2 *parent);
     HNS_Graphical_Element(const HNS_Message2 *parent, const int &graphic_no, const int &x, const int &y, const int &width, const int &height);
 
-    HNS_Bitmap fGetBitmap(const std::vector<HNS_Graphic> *graphics, const int64_t &time) const;
+    HNS_Bitmap fGetBitmap(const std::vector<HNS_Graphic> *graphics, const int64_t &time, const bool &preview_mode = false) const;
+    HNS_Point fGetGraphicPos() const {return HNS_Point(f_x,f_y);}
+    int fGetX() const {return f_x;}
+    int fGetY() const {return f_y;}
 private:
     int f_graphic_no;
     size_t f_x,f_y;
@@ -281,29 +282,34 @@ class HNS_Message_Page_Justified_Element
 public:
     HNS_Message_Page_Justified_Element(const HNS_Message2 *parent);
 
-    void fAddText(const std::string &text, const bool &newline = false);
+    void fAddElement(const HNS_Message_Element2 &element, const bool &newline = false);
+//    void fAddText(const std::string &text, const bool &newline = false);
     size_t fGetNumElements() const {return f_elements.size();}
+    HNS_Message_Justified_Element fGetElement(const size_t &index) const;
 
-    HNS_Bitmap fGetBitmap(const std::vector<HNS_Font> *fonts, const std::vector<HNS_Graphic> *graphics, const int64_t &time = 0, const bool &preview_mode = false) const;
+    HNS_Bitmap fGetBitmap(const std::vector<HNS_Font> *fonts, const int64_t &time = 0, const HNS_SignBoard *signboard = nullptr, type_hns_signboard_error *error = nullptr, const bool &preview_mode = false) const;
 
     type_justification_page fGetPageJustification() const;
+    size_t fGetNumLines() const;
+
+    const HNS_Message2 *fGetParentMessage() const {return f_parent_message;}
 private:
     std::vector<HNS_Message_Justified_Element> f_elements;
 
     type_justification_page f_page_justification;
 
     const HNS_Message2 *f_parent_message;
+
+    int f_line_no;
 };
 
 //This represents a text element on a single line with a single line justification
 class HNS_Message_Justified_Element
 {
 public:
-    HNS_Message_Justified_Element(const HNS_Message2 *parent);
-    HNS_Message_Justified_Element(const HNS_Message2 *parent, const type_justification_line &line_justification, const type_justification_page &page_justification);
+    HNS_Message_Justified_Element(const HNS_Message2 *parent, const int &starting_line);
 
-    void fAddElement(HNS_Message_Element2 &element, const bool &newline = false, const ssize_t &line_spacing = -1);
-    void fAddText(const std::string &text, const bool &newline = false);
+    void fAddElement(HNS_Message_Element2 element, const bool &newline = false);
     size_t fGetNumElements() const;
     HNS_Message_Element2 fGetElement(const size_t &index) const;
     void fChangeJustification(const type_justification_line &line_justification, const type_justification_page &page_justification);
@@ -317,6 +323,7 @@ public:
 
     size_t fGetHeight() const;
     size_t fGetNumLines() const;
+    size_t fGetLastLineSpacing() const;
 
     //Returns the fonts used in this element
     std::vector<int> fGetFontsUsed();
@@ -338,7 +345,7 @@ private:
     //
     //Test
     //Now
-    size_t f_line_no;
+    size_t f_temp_line_no;
 
     std::vector<size_t> f_line_spacing;
 
@@ -354,7 +361,7 @@ class HNS_Message_Element2
 {
 public:
     HNS_Message_Element2(const HNS_Message2 *parent);
-    HNS_Message_Element2(const HNS_Message2 *parent,const std::string &input, const HNS_Font &font, const int &font_no, const bool &is_flashing, const HNS_Flashing_Text &flash_info, const size_t &char_spacing, const int &line_no = 0);
+    HNS_Message_Element2(const HNS_Message2 *parent,const std::string &input, const HNS_Font &font, const int &font_no = -1, const int &line_no = 0);
     void fSetText(const std::string &input, const HNS_Font &font, const int &font_no, const bool &is_flashing, const HNS_Flashing_Text &flash_info);
     void fSetLineNo(const size_t &line_no);
 

@@ -541,8 +541,8 @@ void HNS_SignBoard::fSetGraphics(const vector<HNS_Graphic> &graphics)
 }
 
 //TODO Rebuild this with the new structure of elements (graphics and text are fully separated)
-type_hns_signboard_error HNS_SignBoard::fAddElement(HNS_Message_Justified_Element &element, const int64_t &time, const bool &preview_mode)
-{
+//type_hns_signboard_error HNS_SignBoard::fAddElement(HNS_Message_Justified_Element &element, const int64_t &time, const bool &preview_mode)
+//{
 //    HNS_Message_Element2 temp_element(element.fGetParentMessage());
 //    size_t current_line = 0;
 //    string tempstring;
@@ -780,6 +780,230 @@ type_hns_signboard_error HNS_SignBoard::fAddElement(HNS_Message_Justified_Elemen
 //        }
 //    }
 
+//    return HNS_SGNBRD_ERROR_NONE;
+//}
+
+type_hns_signboard_error HNS_SignBoard::fAddElement(HNS_Message_Page_Justified_Element element, const int64_t &time, const bool &preview_mode)
+{
+    HNS_Bitmap temp_bitmap;
+    type_hns_signboard_error error = HNS_SGNBRD_ERROR_NONE;
+    if(f_signboard_info.fGetType() == HNS_BRD_TRAILER_FULL_MATRIX)
+    {
+        size_t x=0,y=0;
+        if(f_boards.size() == (fGetBoardsWide() * fGetBoardsTall()) )
+        {
+            temp_bitmap = element.fGetBitmap(&f_fonts,time,this,&error,preview_mode);
+
+            if(error == HNS_SGNBRD_ERROR_NONE)
+            {
+                switch(element.fGetPageJustification())
+                {
+                case HNS_JUSTIFICATION_TOP:
+                    if(temp_bitmap.fGetHeight() > fGetHeight())
+                    {
+                        return HNS_SGNBRD_ERROR_TOOTALL;
+                    }
+                    y = 0;
+                    break;
+                case HNS_JUSTIFICATION_PAGE_CENTER:
+                    if(temp_bitmap.fGetHeight() <= fGetHeight())
+                    {
+                        y = (fGetHeight() - temp_bitmap.fGetHeight())/2;
+                    }
+                    else
+                    {
+                        return HNS_SGNBRD_ERROR_TOOTALL;
+                    }
+                    break;
+                case HNS_JUSTIFICATION_BOTTOM:
+                    if(temp_bitmap.fGetHeight() <= fGetHeight())
+                    {
+                        y = fGetHeight() - temp_bitmap.fGetHeight();
+                    }
+                    else
+                    {
+                        return HNS_SGNBRD_ERROR_TOOTALL;
+                    }
+                    break;
+                }
+                fApplyBitmapToFMBoard(temp_bitmap,x,y);
+            }
+            else
+            {
+                return error;
+            }
+        }
+        else
+        {
+            return HNS_SGNBRD_ERROR_SGNBRD_FORMAT;
+        }
+    }
+    else if(f_signboard_info.fGetType() == HNS_BRD_TRAILER_CHARACTER_BOARD)
+    {
+        if( f_boards.size() == (fGetBoardsWide() * fGetBoardsTall()) )
+        {
+            int row,column;
+            int num_characters = 0;
+            HNS_Character temp_char;
+            vector<HNS_Bitmap> characters;
+            int current_font = 0;
+            size_t current_line = 0;
+            HNS_Message_Element2 temp_element(element.fGetParentMessage());
+            HNS_Message_Justified_Element temp_justified_element(element.fGetParentMessage(),0);
+            type_justification_line last_justification = HNS_JUSTIFICATION_LINE_CENTER;
+            string tempstring;
+            if(element.fGetNumLines() > fGetBoardsTall())
+            {
+                return HNS_SGNBRD_ERROR_TOOTALL;
+            }
+            else
+            {
+                for(size_t ui = 0; ui < element.fGetNumElements(); ui++)
+                {
+                    temp_justified_element = element.fGetElement(ui);
+                    for(size_t uj=0;uj < temp_justified_element.fGetNumElements();uj++)
+                    {
+                        temp_element = temp_justified_element.fGetElement(uj);
+                        if(temp_element.fGetLineNo() != current_line)
+                        {
+                            //Add line to board
+                            if(characters.size() > fGetBoardsWide())
+                            {
+                                return HNS_SGNBRD_ERROR_TOOWIDE;
+                            }
+                            else
+                            {
+                                switch(last_justification)
+                                {
+                                case HNS_JUSTIFICATION_LEFT:
+                                    column = 0;
+                                    break;
+                                case HNS_JUSTIFICATION_LINE_CENTER:
+                                    column = (fGetBoardsWide() - characters.size())/2;
+                                    break;
+                                case HNS_JUSTIFICATION_FULL:
+                                    column = 0;
+                                    break;
+                                case HNS_JUSTIFICATION_RIGHT:
+                                    column = fGetBoardsWide() - characters.size();
+                                    break;
+                                }
+
+                                switch(element.fGetPageJustification())
+                                {
+                                case HNS_JUSTIFICATION_TOP:
+                                    row = current_line;
+                                    break;
+                                case HNS_JUSTIFICATION_PAGE_CENTER:
+                                    row = ((fGetBoardsTall() - element.fGetNumLines())/2) + current_line;
+                                    break;
+                                case HNS_JUSTIFICATION_BOTTOM:
+                                    row = (fGetBoardsTall() - element.fGetNumLines()) + current_line;
+                                    break;
+                                }
+                            }
+                            fApplyLineToBoard(characters,row,column);
+                            characters.clear();
+                            current_line = temp_element.fGetLineNo();
+                            last_justification = temp_justified_element.fGetLineJustification();
+                        }
+                        current_font = temp_element.fGetFontNo();
+                        tempstring = temp_element.fGetText();
+                        num_characters += tempstring.size();
+
+                        for(size_t uk = 0; uk < tempstring.size(); uk++)
+                        {
+                            if(temp_element.fGetIsFlashing())
+                            {
+                                if(IsFlashOn(time,temp_element.fGetFlashInfo()))
+                                {
+                                    temp_char = f_fonts.at(current_font-1).fGetCharacter(tempstring[uk]);
+                                }
+                                else
+                                {
+                                    temp_char = f_fonts.at(current_font-1).fGetCharacter(0x20);
+                                }
+                            }
+                            else
+                            {
+                                temp_char = f_fonts.at(current_font-1).fGetCharacter(tempstring[uk]);
+                            }
+                            if((static_cast<size_t>(temp_char.fGetHeight()) > fGetCharacterHeight()) || (static_cast<size_t>(temp_char.fGetWidth()) > fGetCharacterWidth()))
+                            {
+                                return HNS_SGNBRD_CHAR_SIZE;
+                            }
+                            else
+                            {
+                                characters.push_back(temp_char.fGetBitmap());
+                            }
+                        }
+                    }
+                    if(characters.size() > 0)
+                    {
+                        if(characters.size() > fGetBoardsWide())
+                        {
+                            return HNS_SGNBRD_ERROR_TOOWIDE;
+                        }
+                        else
+                        {
+                            switch(temp_justified_element.fGetLineJustification())
+                            {
+                            case HNS_JUSTIFICATION_LEFT:
+                                column = 0;
+                                break;
+                            case HNS_JUSTIFICATION_LINE_CENTER:
+                                column = (fGetBoardsWide() - characters.size())/2;
+                                break;
+                            case HNS_JUSTIFICATION_FULL:
+                                column = 0;
+                                break;
+                            case HNS_JUSTIFICATION_RIGHT:
+                                column = fGetBoardsWide() - characters.size();
+                                break;
+                            }
+
+                            switch(element.fGetPageJustification())
+                            {
+                            case HNS_JUSTIFICATION_TOP:
+                                row = current_line;
+                                break;
+                            case HNS_JUSTIFICATION_PAGE_CENTER:
+                                row = ((fGetBoardsTall() - element.fGetNumLines())/2) + current_line;
+                                break;
+                            case HNS_JUSTIFICATION_BOTTOM:
+                                row = (fGetBoardsTall() - element.fGetNumLines()) + current_line;
+                                break;
+                            }
+
+                            fApplyLineToBoard(characters,row,column);
+                        }
+                    }
+                }
+            }
+        }
+        else
+        {
+            return HNS_SGNBRD_ERROR_SGNBRD_FORMAT;
+        }
+    }
+    return HNS_SGNBRD_ERROR_NONE;
+}
+
+type_hns_signboard_error HNS_SignBoard::fAddGraphic(HNS_Graphical_Element element, const int64_t &time, const bool &preview_mode)
+{
+    if(f_signboard_info.fGetType() == HNS_BRD_TRAILER_FULL_MATRIX)
+    {
+        int x=0,y=0;
+        HNS_Bitmap temp_bitmap;
+        x = element.fGetGraphicPos().fGetX();
+        y = element.fGetGraphicPos().fGetY();
+        temp_bitmap = element.fGetBitmap(&f_graphics,time,preview_mode);
+        fApplyBitmapToFMBoard(temp_bitmap,x,y);
+    }
+    else
+    {
+        return HNS_SGNBRD_ERROR_SGNBRD_FORMAT;
+    }
     return HNS_SGNBRD_ERROR_NONE;
 }
 
