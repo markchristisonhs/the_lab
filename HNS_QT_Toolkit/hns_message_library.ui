@@ -1,0 +1,562 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>HNS_Message_Library</class>
+ <widget class="QWidget" name="HNS_Message_Library">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1140</width>
+    <height>800</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <widget class="QToolButton" name="PB_MsgLib_Next">
+   <property name="geometry">
+    <rect>
+     <x>1050</x>
+     <y>350</y>
+     <width>44</width>
+     <height>37</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QToolButton{
+background-color:#FFFFFF;
+border:none
+}</string>
+   </property>
+   <property name="text">
+    <string>...</string>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>:/icons/Right Arrow.png</normaloff>:/icons/Right Arrow.png</iconset>
+   </property>
+   <property name="iconSize">
+    <size>
+     <width>42</width>
+     <height>35</height>
+    </size>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_MsgLib_Del_All">
+   <property name="geometry">
+    <rect>
+     <x>40</x>
+     <y>120</y>
+     <width>163</width>
+     <height>74</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#FFFFFF;
+	color:#414141;
+	border-style:outset;
+	border-width:3px;
+	border-color:#1A3760;
+	border-radius:12px;
+}</string>
+   </property>
+   <property name="text">
+    <string>CLEAR CUSTOM
+MESSAGES</string>
+   </property>
+  </widget>
+  <widget class="HNS_Message_Preview" name="GV_MessageLibrary_Preview2" native="true">
+   <property name="geometry">
+    <rect>
+     <x>510</x>
+     <y>160</y>
+     <width>230</width>
+     <height>125</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true"/>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_MsgLib_Pick2">
+   <property name="geometry">
+    <rect>
+     <x>380</x>
+     <y>650</y>
+     <width>163</width>
+     <height>74</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#FFFFFF;
+	color:#414141;
+	border-style:outset;
+	border-width:3px;
+	border-color:#1A3760;
+	border-radius:12px;
+}</string>
+   </property>
+   <property name="text">
+    <string>VIEW MESSAGE
+LIBRARY</string>
+   </property>
+  </widget>
+  <widget class="QToolButton" name="PB_MsgLib_Prev">
+   <property name="geometry">
+    <rect>
+     <x>30</x>
+     <y>350</y>
+     <width>44</width>
+     <height>37</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QToolButton{
+background-color:#FFFFFF;
+border:none
+}</string>
+   </property>
+   <property name="text">
+    <string>...</string>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>:/icons/Left Arrow.png</normaloff>:/icons/Left Arrow.png</iconset>
+   </property>
+   <property name="iconSize">
+    <size>
+     <width>42</width>
+     <height>35</height>
+    </size>
+   </property>
+  </widget>
+  <widget class="HNS_Message_Preview" name="GV_MessageLibrary_Preview9" native="true">
+   <property name="geometry">
+    <rect>
+     <x>790</x>
+     <y>500</y>
+     <width>230</width>
+     <height>125</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true"/>
+   </property>
+  </widget>
+  <widget class="HNS_Message_Preview" name="GV_MessageLibrary_Preview5" native="true">
+   <property name="geometry">
+    <rect>
+     <x>510</x>
+     <y>330</y>
+     <width>230</width>
+     <height>125</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true"/>
+   </property>
+  </widget>
+  <widget class="HNS_Message_Preview" name="GV_MessageLibrary_Preview1" native="true">
+   <property name="geometry">
+    <rect>
+     <x>230</x>
+     <y>160</y>
+     <width>230</width>
+     <height>125</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true"/>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_MsgLib_Custom">
+   <property name="geometry">
+    <rect>
+     <x>40</x>
+     <y>430</y>
+     <width>163</width>
+     <height>74</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#FFFFFF;
+	color:#414141;
+	border-style:outset;
+	border-width:3px;
+	border-color:#1A3760;
+	border-radius:12px;
+}
+QPushButton:checked{
+	background-color:#1A3760;
+	color:#FFFFFF;
+	border-radius:12px;
+}</string>
+   </property>
+   <property name="text">
+    <string>CUSTOM</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="HNS_Message_Preview" name="GV_MessageLibrary_Preview4" native="true">
+   <property name="geometry">
+    <rect>
+     <x>230</x>
+     <y>330</y>
+     <width>230</width>
+     <height>125</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true"/>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_MsgLib_Del">
+   <property name="geometry">
+    <rect>
+     <x>40</x>
+     <y>210</y>
+     <width>163</width>
+     <height>74</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#FFFFFF;
+	color:#414141;
+	border-style:outset;
+	border-width:3px;
+	border-color:#1A3760;
+	border-radius:12px;
+}</string>
+   </property>
+   <property name="text">
+    <string>DELETE</string>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="LE_Search">
+   <property name="geometry">
+    <rect>
+     <x>330</x>
+     <y>90</y>
+     <width>500</width>
+     <height>55</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <pointsize>16</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">color:#414141;border: 3px solid #414141;border-radius:10px;</string>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
+   </property>
+   <property name="placeholderText">
+    <string>SEARCH</string>
+   </property>
+   <property name="clearButtonEnabled">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_MsgLib_InsSelected">
+   <property name="geometry">
+    <rect>
+     <x>40</x>
+     <y>650</y>
+     <width>163</width>
+     <height>74</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#FFFFFF;
+	color:#414141;
+	border-style:outset;
+	border-width:3px;
+	border-color:#1A3760;
+	border-radius:12px;
+}</string>
+   </property>
+   <property name="text">
+    <string>INSERT
+SELECTED</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_MsgLib_Back">
+   <property name="geometry">
+    <rect>
+     <x>940</x>
+     <y>650</y>
+     <width>163</width>
+     <height>74</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#FFFFFF;
+	color:#414141;
+	border-style:outset;
+	border-width:3px;
+	border-color:#1A3760;
+	border-radius:12px;
+}</string>
+   </property>
+   <property name="text">
+    <string>BACK</string>
+   </property>
+  </widget>
+  <widget class="HNS_Message_Preview" name="GV_MessageLibrary_Preview7" native="true">
+   <property name="geometry">
+    <rect>
+     <x>230</x>
+     <y>500</y>
+     <width>230</width>
+     <height>125</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true"/>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_MsgLib_Cancel">
+   <property name="geometry">
+    <rect>
+     <x>210</x>
+     <y>650</y>
+     <width>163</width>
+     <height>74</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#FFFFFF;
+	color:#414141;
+	border-style:outset;
+	border-width:3px;
+	border-color:#1A3760;
+	border-radius:12px;
+}</string>
+   </property>
+   <property name="text">
+    <string>CANCEL</string>
+   </property>
+  </widget>
+  <widget class="HNS_Message_Preview" name="GV_MessageLibrary_Preview6" native="true">
+   <property name="geometry">
+    <rect>
+     <x>790</x>
+     <y>330</y>
+     <width>230</width>
+     <height>125</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true"/>
+   </property>
+  </widget>
+  <widget class="QLabel" name="LBL_MsgLib_Title">
+   <property name="geometry">
+    <rect>
+     <x>180</x>
+     <y>30</y>
+     <width>800</width>
+     <height>51</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>33</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">color:#1A3760</string>
+   </property>
+   <property name="text">
+    <string>Saved Message Library</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
+   </property>
+  </widget>
+  <widget class="HNS_Message_Preview" name="GV_MessageLibrary_Preview3" native="true">
+   <property name="geometry">
+    <rect>
+     <x>790</x>
+     <y>160</y>
+     <width>230</width>
+     <height>125</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true"/>
+   </property>
+  </widget>
+  <widget class="HNS_Message_Preview" name="GV_MessageLibrary_Preview8" native="true">
+   <property name="geometry">
+    <rect>
+     <x>510</x>
+     <y>500</y>
+     <width>230</width>
+     <height>125</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true"/>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_MsgLib_Pick1">
+   <property name="geometry">
+    <rect>
+     <x>550</x>
+     <y>650</y>
+     <width>163</width>
+     <height>74</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#FFFFFF;
+	color:#414141;
+	border-style:outset;
+	border-width:3px;
+	border-color:#1A3760;
+	border-radius:12px;
+}</string>
+   </property>
+   <property name="text">
+    <string>VIEW ANIMATED
+IMAGE LIBRARY</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_MsgLib_Fact">
+   <property name="geometry">
+    <rect>
+     <x>40</x>
+     <y>540</y>
+     <width>163</width>
+     <height>74</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#FFFFFF;
+	color:#414141;
+	border-style:outset;
+	border-width:3px;
+	border-color:#1A3760;
+	border-radius:12px;
+}
+
+QPushButton:checked{
+	background-color:#1A3760;
+	color:#FFFFFF;
+	border-radius:12px;
+}</string>
+   </property>
+   <property name="text">
+    <string>FACTORY</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_MsgLib_Pick3">
+   <property name="geometry">
+    <rect>
+     <x>720</x>
+     <y>650</y>
+     <width>163</width>
+     <height>74</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#FFFFFF;
+	color:#414141;
+	border-style:outset;
+	border-width:3px;
+	border-color:#1A3760;
+	border-radius:12px;
+}</string>
+   </property>
+   <property name="text">
+    <string>VIEW STATIC
+IMAGE LIBRARY</string>
+   </property>
+  </widget>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>HNS_Message_Preview</class>
+   <extends>QWidget</extends>
+   <header>hns_message_preview.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

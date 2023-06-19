@@ -1,0 +1,726 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>HNS_Brightness_Settings_Screen</class>
+ <widget class="QWidget" name="HNS_Brightness_Settings_Screen">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1140</width>
+    <height>800</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <widget class="QPushButton" name="PB_BrightSet_Lv6">
+   <property name="geometry">
+    <rect>
+     <x>380</x>
+     <y>400</y>
+     <width>58</width>
+     <height>106</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>19</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#A59C97;
+	color:#FFFFFF;
+	border-radius:12px;
+}
+
+QPushButton:checked{
+	background-color:#1A3760;
+}</string>
+   </property>
+   <property name="text">
+    <string>6</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_BrightSet_Lv10">
+   <property name="geometry">
+    <rect>
+     <x>660</x>
+     <y>400</y>
+     <width>58</width>
+     <height>106</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>19</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#EB9C5E;
+	color:#FFFFFF;
+	border-radius:12px;
+}
+
+QPushButton:checked{
+	background-color:#1A3760;
+}</string>
+   </property>
+   <property name="text">
+    <string>10</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_BrightSet_Lv1">
+   <property name="geometry">
+    <rect>
+     <x>30</x>
+     <y>400</y>
+     <width>58</width>
+     <height>106</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>19</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#575452;
+	color:#FFFFFF;
+	border-radius:12px;
+}
+
+QPushButton:checked{
+	background-color:#1A3760;
+}</string>
+   </property>
+   <property name="text">
+    <string>1</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_BrightSet_Lv7">
+   <property name="geometry">
+    <rect>
+     <x>450</x>
+     <y>400</y>
+     <width>58</width>
+     <height>106</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>19</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#C6B2A2;
+	color:#FFFFFF;
+	border-radius:12px;
+}
+
+QPushButton:checked{
+	background-color:#1A3760;
+}</string>
+   </property>
+   <property name="text">
+    <string>7</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_BrightSet_Lv13">
+   <property name="geometry">
+    <rect>
+     <x>870</x>
+     <y>400</y>
+     <width>58</width>
+     <height>106</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>19</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#E97B26;
+	color:#FFFFFF;
+	border-radius:12px;
+}
+
+QPushButton:checked{
+	background-color:#1A3760;
+}</string>
+   </property>
+   <property name="text">
+    <string>13</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_BrightSet_Save">
+   <property name="geometry">
+    <rect>
+     <x>620</x>
+     <y>630</y>
+     <width>163</width>
+     <height>74</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>15</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#1A3760;
+	color:#FFFFFF;
+	border-radius:12px;
+}</string>
+   </property>
+   <property name="text">
+    <string>SAVE</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_BrightSet_Cancel">
+   <property name="geometry">
+    <rect>
+     <x>790</x>
+     <y>630</y>
+     <width>163</width>
+     <height>74</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>15</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#FFFFFF;
+	color:#414141;
+	border-style:outset;
+	border-width:3px;
+	border-color:#1A3760;
+	border-radius:12px;
+}</string>
+   </property>
+   <property name="text">
+    <string>CANCEL</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_BrightSet_Auto">
+   <property name="geometry">
+    <rect>
+     <x>300</x>
+     <y>210</y>
+     <width>320</width>
+     <height>110</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>19</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#FFFFFF;
+	color:#414141;
+	border-style:outset;
+	border-width:1px;
+	border-color:#707070;
+	border-radius:12px;
+}
+
+QPushButton:checked{
+	background-color:#1A3760;
+	color:#FFFFFF;
+}</string>
+   </property>
+   <property name="text">
+    <string>AUTOMATIC
+MODE</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_BrightSet_Lv2">
+   <property name="geometry">
+    <rect>
+     <x>100</x>
+     <y>400</y>
+     <width>58</width>
+     <height>106</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>19</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#676361;
+	color:#FFFFFF;
+	border-radius:12px;
+}
+
+QPushButton:checked{
+	background-color:#1A3760;
+}</string>
+   </property>
+   <property name="text">
+    <string>2</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_BrightSet_Lv14">
+   <property name="geometry">
+    <rect>
+     <x>940</x>
+     <y>400</y>
+     <width>58</width>
+     <height>106</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>19</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#E97126;
+	color:#FFFFFF;
+	border-radius:12px;
+}
+
+QPushButton:checked{
+	background-color:#1A3760;
+}</string>
+   </property>
+   <property name="text">
+    <string>14</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_BrightSet_Lv9">
+   <property name="geometry">
+    <rect>
+     <x>590</x>
+     <y>400</y>
+     <width>58</width>
+     <height>106</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>19</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#EDB183;
+	color:#FFFFFF;
+	border-radius:12px;
+}
+
+QPushButton:checked{
+	background-color:#1A3760;
+}</string>
+   </property>
+   <property name="text">
+    <string>9</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_BrightSet_Lv8">
+   <property name="geometry">
+    <rect>
+     <x>520</x>
+     <y>400</y>
+     <width>58</width>
+     <height>106</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>19</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#E0BA9C;
+	color:#FFFFFF;
+	border-radius:12px;
+}
+
+QPushButton:checked{
+	background-color:#1A3760;
+}</string>
+   </property>
+   <property name="text">
+    <string>8</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_BrightSet_Back">
+   <property name="geometry">
+    <rect>
+     <x>960</x>
+     <y>630</y>
+     <width>163</width>
+     <height>74</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>15</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#FFFFFF;
+	color:#414141;
+	border-style:outset;
+	border-width:3px;
+	border-color:#1A3760;
+	border-radius:12px;
+}</string>
+   </property>
+   <property name="text">
+    <string>BACK</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_BrightSet_Lv15">
+   <property name="geometry">
+    <rect>
+     <x>1010</x>
+     <y>400</y>
+     <width>58</width>
+     <height>106</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>19</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#EB6123;
+	color:#FFFFFF;
+	border-radius:12px;
+}
+
+QPushButton:checked{
+	background-color:#1A3760;
+}</string>
+   </property>
+   <property name="text">
+    <string>15</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_26">
+   <property name="geometry">
+    <rect>
+     <x>390</x>
+     <y>20</y>
+     <width>481</width>
+     <height>51</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>33</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">color:#1A3760</string>
+   </property>
+   <property name="text">
+    <string>BRIGHTNESS SETTINGS</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_BrightSet_Lv4">
+   <property name="geometry">
+    <rect>
+     <x>240</x>
+     <y>400</y>
+     <width>58</width>
+     <height>106</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>19</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#807977;
+	color:#FFFFFF;
+	border-radius:12px;
+}
+
+QPushButton:checked{
+	background-color:#1A3760;
+}</string>
+   </property>
+   <property name="text">
+    <string>4</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QLabel" name="LBL_Brightness_Title">
+   <property name="geometry">
+    <rect>
+     <x>350</x>
+     <y>530</y>
+     <width>421</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">color:#414141</string>
+   </property>
+   <property name="text">
+    <string>NOTE: Automatic Brightness mode is recommended</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_BrightSet_Lv5">
+   <property name="geometry">
+    <rect>
+     <x>310</x>
+     <y>400</y>
+     <width>58</width>
+     <height>106</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>19</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#8D8683;
+	color:#FFFFFF;
+	border-radius:12px;
+}
+
+QPushButton:checked{
+	background-color:#1A3760;
+}</string>
+   </property>
+   <property name="text">
+    <string>5</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_BrightSet_Lv12">
+   <property name="geometry">
+    <rect>
+     <x>800</x>
+     <y>400</y>
+     <width>58</width>
+     <height>106</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>19</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#E6873D;
+	color:#FFFFFF;
+	border-radius:12px;
+}
+
+QPushButton:checked{
+	background-color:#1A3760;
+}</string>
+   </property>
+   <property name="text">
+    <string>12</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_BrightSet_Lv3">
+   <property name="geometry">
+    <rect>
+     <x>170</x>
+     <y>400</y>
+     <width>58</width>
+     <height>106</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>19</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#726D6B;
+	color:#FFFFFF;
+	border-radius:12px;
+}
+
+QPushButton:checked{
+	background-color:#1A3760;
+}</string>
+   </property>
+   <property name="text">
+    <string>3</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_BrightSet_Lv11">
+   <property name="geometry">
+    <rect>
+     <x>730</x>
+     <y>400</y>
+     <width>58</width>
+     <height>106</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>19</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#E8914D;
+	color:#FFFFFF;
+	border-radius:12px;
+}
+
+QPushButton:checked{
+	background-color:#1A3760;
+}</string>
+   </property>
+   <property name="text">
+    <string>11</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_BrightSet_Manual">
+   <property name="geometry">
+    <rect>
+     <x>680</x>
+     <y>210</y>
+     <width>320</width>
+     <height>110</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>19</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#FFFFFF;
+	color:#414141;
+	border-style:outset;
+	border-width:1px;
+	border-color:#707070;
+	border-radius:12px;
+}
+
+QPushButton:checked{
+	background-color:#1A3760;
+	color:#FFFFFF;
+}</string>
+   </property>
+   <property name="text">
+    <string>MANUAL
+MODE</string>
+   </property>
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

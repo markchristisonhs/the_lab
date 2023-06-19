@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>HNS_Message_Screen</class>
+ <widget class="QWidget" name="HNS_Message_Screen">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1140</width>
+    <height>800</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <widget class="QLabel" name="label_7">
+   <property name="geometry">
+    <rect>
+     <x>260</x>
+     <y>40</y>
+     <width>481</width>
+     <height>41</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>33</pointsize>
+    </font>
+   </property>
+   <property name="text">
+    <string>Create New Message</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_Message_OpenLibrary">
+   <property name="geometry">
+    <rect>
+     <x>510</x>
+     <y>170</y>
+     <width>308</width>
+     <height>219</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>26</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">background-color:#1A3760;color:#FFFFFF;border-radius:10px</string>
+   </property>
+   <property name="text">
+    <string>CHOOSE FROM
+SAVED LIBRARY</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_Message_Back">
+   <property name="geometry">
+    <rect>
+     <x>880</x>
+     <y>580</y>
+     <width>163</width>
+     <height>74</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">background-color:#FFFFFF;color:#414141;border-style:outset;border-width:3px;border-color:#1A3760;border-radius:12px</string>
+   </property>
+   <property name="text">
+    <string>BACK</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_Message_Create">
+   <property name="geometry">
+    <rect>
+     <x>136</x>
+     <y>168</y>
+     <width>310</width>
+     <height>219</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>26</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">background-color:#1A3760;color:#FFFFFF;border-radius:10px</string>
+   </property>
+   <property name="text">
+    <string>CREATE CUSTOM
+MESSAGE</string>
+   </property>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

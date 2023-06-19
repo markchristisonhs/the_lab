@@ -1,0 +1,438 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>HNS_TTMB_Home_Screen</class>
+ <widget class="QWidget" name="HNS_TTMB_Home_Screen">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1140</width>
+    <height>800</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <widget class="QPushButton" name="PB_Blank_Sign">
+   <property name="geometry">
+    <rect>
+     <x>720</x>
+     <y>160</y>
+     <width>163</width>
+     <height>74</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>15</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#1A3760;
+	color:#FFFFFF;
+	border-radius:12px;
+}</string>
+   </property>
+   <property name="text">
+    <string>BLANK SIGN</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="LBL_LineJustification">
+   <property name="geometry">
+    <rect>
+     <x>710</x>
+     <y>560</y>
+     <width>281</width>
+     <height>51</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>16</pointsize>
+    </font>
+   </property>
+   <property name="text">
+    <string>Caution: Selecting a message
+will cause the sign to raise.</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_StoppedTraffic">
+   <property name="geometry">
+    <rect>
+     <x>520</x>
+     <y>470</y>
+     <width>163</width>
+     <height>74</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>15</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#1A3760;
+	color:#FFFFFF;
+	border-radius:12px;
+}</string>
+   </property>
+   <property name="text">
+    <string>STOPPED
+TRAFFIC
+AHEAD</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_Custom3">
+   <property name="geometry">
+    <rect>
+     <x>350</x>
+     <y>550</y>
+     <width>163</width>
+     <height>74</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>15</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#1A3760;
+	color:#FFFFFF;
+	border-radius:12px;
+}</string>
+   </property>
+   <property name="text">
+    <string>CUSTOM 3</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_Custom4">
+   <property name="geometry">
+    <rect>
+     <x>520</x>
+     <y>550</y>
+     <width>163</width>
+     <height>74</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>15</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#1A3760;
+	color:#FFFFFF;
+	border-radius:12px;
+}</string>
+   </property>
+   <property name="text">
+    <string>CUSTOM 4</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_DoubleArrow">
+   <property name="geometry">
+    <rect>
+     <x>350</x>
+     <y>470</y>
+     <width>163</width>
+     <height>74</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>15</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#1A3760;
+	color:#FFFFFF;
+	border-radius:12px;
+}</string>
+   </property>
+   <property name="text">
+    <string>DOUBLE
+ARROW</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_LeftArrow">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>470</y>
+     <width>163</width>
+     <height>74</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>15</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#1A3760;
+	color:#FFFFFF;
+	border-radius:12px;
+}</string>
+   </property>
+   <property name="text">
+    <string>LEFT
+ARROW</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_Blank_Lower">
+   <property name="geometry">
+    <rect>
+     <x>720</x>
+     <y>320</y>
+     <width>163</width>
+     <height>74</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>15</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#1A3760;
+	color:#FFFFFF;
+	border-radius:12px;
+}</string>
+   </property>
+   <property name="text">
+    <string>BLANK AND
+LOWER SIGN</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_PaintCrew">
+   <property name="geometry">
+    <rect>
+     <x>860</x>
+     <y>470</y>
+     <width>163</width>
+     <height>74</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>15</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#1A3760;
+	color:#FFFFFF;
+	border-radius:12px;
+}</string>
+   </property>
+   <property name="text">
+    <string>PAINT
+CREW
+AHEAD</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_Custom2">
+   <property name="geometry">
+    <rect>
+     <x>180</x>
+     <y>550</y>
+     <width>163</width>
+     <height>74</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>15</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#1A3760;
+	color:#FFFFFF;
+	border-radius:12px;
+}</string>
+   </property>
+   <property name="text">
+    <string>CUSTOM 2</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_RoadWork">
+   <property name="geometry">
+    <rect>
+     <x>690</x>
+     <y>470</y>
+     <width>163</width>
+     <height>74</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>15</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#1A3760;
+	color:#FFFFFF;
+	border-radius:12px;
+}</string>
+   </property>
+   <property name="text">
+    <string>ROAD
+WORK
+AHEAD</string>
+   </property>
+  </widget>
+  <widget class="HNS_Signboard_Preview" name="GV_HomePreview" native="true">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>20</y>
+     <width>695</width>
+     <height>443</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string notr="true"/>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_Custom1">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>550</y>
+     <width>163</width>
+     <height>74</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>15</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#1A3760;
+	color:#FFFFFF;
+	border-radius:12px;
+}</string>
+   </property>
+   <property name="text">
+    <string>CUSTOM 1</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_Raise_Sign">
+   <property name="geometry">
+    <rect>
+     <x>720</x>
+     <y>20</y>
+     <width>163</width>
+     <height>74</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>15</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#1A3760;
+	color:#FFFFFF;
+	border-radius:12px;
+}</string>
+   </property>
+   <property name="text">
+    <string>RAISE SIGN</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_RightArrow">
+   <property name="geometry">
+    <rect>
+     <x>180</x>
+     <y>470</y>
+     <width>163</width>
+     <height>74</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>15</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#1A3760;
+	color:#FFFFFF;
+	border-radius:12px;
+}</string>
+   </property>
+   <property name="text">
+    <string>RIGHT
+ARROW</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="PB_SetCustom">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>710</y>
+     <width>163</width>
+     <height>74</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Lato</family>
+     <pointsize>15</pointsize>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">QPushButton{
+	background-color:#1A3760;
+	color:#FFFFFF;
+	border-radius:12px;
+}</string>
+   </property>
+   <property name="text">
+    <string>SET
+CUSTOM</string>
+   </property>
+  </widget>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>HNS_Signboard_Preview</class>
+   <extends>QWidget</extends>
+   <header>hns_signboard_preview.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>
