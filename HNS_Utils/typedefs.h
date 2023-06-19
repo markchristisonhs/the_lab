@@ -34,6 +34,13 @@ struct type_speed_log_entry
     int f_speed;
 };
 
+enum
+{
+    VSL_BEACON_OFF = 0,
+    VSL_BEACON_ON,
+    VSL_BEACON_AUTO
+};
+
 typedef enum
 {
     HNS_DATA_NOCHANGE = 0x0,

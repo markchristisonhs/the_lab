@@ -26,6 +26,9 @@ public:
     void fSetCRC(const uint16_t &crc);
     std::vector<uint8_t> fGetCRCAsVector() const;
     uint16_t fGetCRCAsInt() const;
+
+    bool operator==(const HNS_NTCIP_MessageIDCode &rhs);
+    bool operator!=(const HNS_NTCIP_MessageIDCode &rhs);
 private:
     NTCIP_MESSAGE::type_ntcip_message_memory_type f_memorytype;
     uint16_t f_messagenumber;
@@ -84,6 +87,9 @@ public:
     void fSetSrcAddr(const std::string &src_addr);
     std::vector<uint8_t> fGetSrcAddrAsVec() const;
     std::string fGetSrcAddrAsString() const;
+
+    bool operator==(const HNS_NTCIP_MessageActivationCode &rhs);
+    bool operator!=(const HNS_NTCIP_MessageActivationCode &rhs);
 private:
     uint16_t f_duration;
     uint8_t f_priority;

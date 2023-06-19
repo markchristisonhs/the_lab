@@ -5,107 +5,111 @@
 
 #include <cstdint>
 #include <vector>
+#include <deque>
 
 enum
 {
     HNS_INPUT_STYLE_NONE = -1,
-    HNS_INPUT_STYLE_DEFAULT = 0
+    HNS_INPUT_STYLE_FALLING_TIMER = 0
 };
 
 enum
 {
-    HNS_INPUT_NO_EDGE = -1,
-    HNS_INPUT_RISING_EDGE = 0,
-    HNS_INPUT_FALLING_EDGE = 1
+    HNS_INPUTS_STYLE_NONE = -1,
+    HNS_INPUTS_STYLE_PENN = 0
 };
 
-class HNS_Aux_Input
+enum
 {
-public:
-    virtual void fSetPortNumber(const int &port_number) = 0;
-    virtual int fGetPortNumber() const = 0;
-
-    virtual void fSetEnabled(const unsigned char &enabled) = 0;
-    virtual unsigned char fGetEnabled() const = 0;
-    virtual void fSetDuration(const int &duration) = 0;
-    virtual int fGetDuration() const = 0;
-    virtual void fSetMsg(const HNS_NTCIP_MessageIDCode &msg) = 0;
-    virtual HNS_NTCIP_MessageIDCode fGetMsg() const = 0;
-
-    virtual int fGetStyle() = 0;
-
-    virtual bool fIsAuxDisplayed(const int64_t &time_in, HNS_NTCIP_MessageIDCode &msg) = 0;
-    virtual int fSetInput(const int &val) = 0;
-    virtual void fCancel() = 0;
-
-    virtual ~HNS_Aux_Input() {}
+    HNS_INPUT_NO_EDGE = 0,
+    HNS_INPUT_RISING_EDGE = 1,
+    HNS_INPUT_FALLING_EDGE = -1
 };
 
-class HNS_Aux_Input_Basic_Style : public HNS_Aux_Input
+enum
 {
-public:
-    HNS_Aux_Input_Basic_Style();
-    HNS_Aux_Input_Basic_Style(const int &port_number):f_port_number(port_number) {}
-
-    void fSetPortNumber(const int &port_number) {f_port_number = port_number;}
-    int fGetPortNumber() const {return f_port_number;}
-
-    void fSetEnabled(const unsigned char &enabled);
-    unsigned char fGetEnabled() const;
-    void fSetDuration(const int &duration);
-    int fGetDuration() const;
-    void fSetMsg(const HNS_NTCIP_MessageIDCode &msg);
-    HNS_NTCIP_MessageIDCode fGetMsg() const;
-
-    int fGetStyle() {return HNS_INPUT_STYLE_DEFAULT;}
-    bool fIsAuxDisplayed(const int64_t &time_in, HNS_NTCIP_MessageIDCode &msg);
-
-    int fSetInput(const int &val);
-    void fCancel();
-private:
-    void fStateMachine(const int &action = -1, const int64_t &time_in = 0);
-
-    int f_port_number;
-    int f_val, f_last_val;
-    bool f_enabled;
-    int f_duration;
-    int f_state;
-    HNS_NTCIP_MessageIDCode f_msg;
-
-    int64_t f_delay;
-    int64_t f_time_activated;
+    HNS_AUX_ACTION_NONE = 0,
+    HNS_AUX_ACTION_START,
+    HNS_AUX_ACTION_STOP,
 };
 
 class HNS_Aux_Inputs
 {
 public:
-    void fAddPortNumber(const int &port_number, const size_t &aux_channel, const int &algorithm);
+    virtual void fRecvInput(const int &val, const int64_t &time, const int &port_number, const HNS_NTCIP_MessageActivationCode &running_code) = 0;
+    virtual void fCancel() = 0;
+    virtual bool fIsRunning(const int64_t &time, HNS_NTCIP_MessageActivationCode *result_code, int &action) = 0;
+    virtual int fGetType() = 0;
 
-    void fSetEnables(const std::vector<unsigned char> &enables);
-    void fSetEnabled(const unsigned char &enabled, const size_t &aux_channel);
-    unsigned char fGetEnabled(const size_t &aux_channel) const;
-    std::vector<unsigned char> fGetEnables() const;
+    virtual void fSetInput(const int &aux_channel, const HNS_NTCIP_MessageIDCode &msg_id, const bool &enabled, const int &duration) = 0;
 
-    void fSetDurations(const std::vector<int> durations);
-    void fSetDuration(const int &duration, const size_t &aux_channel);
-    int fGetDuration(const size_t &aux_channel) const;
-    std::vector<int> fGetDurations() const;
+    virtual ~HNS_Aux_Inputs() {}
+};
 
-    void fSetMsgs(const std::vector<HNS_NTCIP_MessageIDCode> &msgs);
-    void fSetMsg(const HNS_NTCIP_MessageIDCode &msg, const size_t &aux_channel);
-    HNS_NTCIP_MessageIDCode fGetMsg(const size_t &aux_channel) const;
-    std::vector<HNS_NTCIP_MessageIDCode> fGetMsgs() const;
+class HNS_Aux_Input
+{
+public:
+    virtual int fRecvInput(const int &val, const int64_t &time) = 0;
+    virtual void fCancel() = 0;
+    virtual bool fIsRunning(const int64_t &time, HNS_NTCIP_MessageIDCode *result_id ) = 0;
+    virtual int fGetType() = 0;
 
-    int fGetStyle(const size_t &aux_channel);
+    virtual void fSetDuration(const int &duration) = 0;
+    virtual void fSetEnabled(const bool &enabled) = 0;
+    virtual void fSetMessage(const HNS_NTCIP_MessageIDCode &msg_code) = 0;
 
-    bool fIsAuxDisplayed(const int64_t &time_in, HNS_NTCIP_MessageActivationCode *msg = nullptr, bool *turn_on_off = nullptr);
-    void fSetInput(const int &val, const int &port_number, const HNS_NTCIP_MessageActivationCode &return_msg);
+    virtual int fGetPortNumber() = 0;
+
+    virtual ~HNS_Aux_Input() {}
+};
+
+class HNS_Aux_Input_Falling_Timer : public HNS_Aux_Input
+{
+public:
+    HNS_Aux_Input_Falling_Timer();
+    HNS_Aux_Input_Falling_Timer(const int &port_number);
+
+    int fRecvInput(const int &val, const int64_t &time);
     void fCancel();
+    bool fIsRunning(const int64_t &time, HNS_NTCIP_MessageIDCode *result_id);
+    int fGetType() {return HNS_INPUT_FALLING_EDGE;}
 
-    ~HNS_Aux_Inputs();
+    void fSetDuration(const int &duration);
+    void fSetEnabled(const bool &enabled);
+    void fSetMessage(const HNS_NTCIP_MessageIDCode &msg_code);
+
+    int fGetPortNumber() {return f_port_number;}
+
 private:
-    std::vector<HNS_Aux_Input *> f_inputs;
-    HNS_NTCIP_MessageActivationCode f_return_act;
+    int f_port_number;
+    int f_duration;
+    bool f_enabled;
+    HNS_NTCIP_MessageIDCode f_msg_id;
+
+    int f_current_val;
+    bool f_running;
+
+    int64_t f_edge_time;
+};
+
+class HNS_Aux_Inputs_PennStyle : public HNS_Aux_Inputs
+{
+public:
+    HNS_Aux_Inputs_PennStyle();
+    HNS_Aux_Inputs_PennStyle(const std::vector<int> &port_numbers, const int &algorithm);
+
+    void fRecvInput(const int &val, const int64_t &time, const int &port_number, const HNS_NTCIP_MessageActivationCode &running_code);
+    void fCancel();
+    bool fIsRunning(const int64_t &time, HNS_NTCIP_MessageActivationCode *result_code, int &action);
+    int fGetType() {return HNS_INPUTS_STYLE_PENN;}
+
+    void fSetInput(const int &aux_channel, const HNS_NTCIP_MessageIDCode &msg_id, const bool &enabled, const int &duration);
+
+private:
+    HNS_NTCIP_MessageActivationCode f_ret_code;
+
+    std::vector<HNS_Aux_Input *> f_input_channels;
+    std::deque<HNS_Aux_Input *> f_running_queue;
 };
 
 #endif // HNS_AUX_INPUT_H

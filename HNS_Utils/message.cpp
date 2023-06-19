@@ -187,12 +187,32 @@ bool HNS_Flashing_Text::fGetOnFirst() const
     return f_on_first;
 }
 
-HNS_Message2::HNS_Message2()
+HNS_Message2::HNS_Message2():
+    f_current_page_time_on(f_default_page_time_on)
+  , f_current_page_time_off(f_default_page_time_off)
+  , f_current_line_justification(f_default_line_justification)
+  , f_current_page_justification(f_default_page_justification)
+  , f_current_font(f_default_font)
+  //Line and character spacing are wrong here.  These should be the default font's but this is not accessible here
+  //So I am initializing to 1 here to preserve RAII behavior
+  , f_current_line_spacing(1)
+  , f_current_char_spacing(1)
+  , f_current_flash_info(f_default_flash_time_on,f_default_flash_time_off,true)
+  , f_current_flashing_state(false)
 {
 
 }
 
-HNS_Message2::HNS_Message2(const HNS_SignBoard_Info &)
+HNS_Message2::HNS_Message2(const HNS_SignBoard_Info &):
+    f_current_page_time_on(f_default_page_time_on)
+  , f_current_page_time_off(f_default_page_time_off)
+  , f_current_line_justification(f_default_line_justification)
+  , f_current_page_justification(f_default_page_justification)
+  , f_current_font(f_default_font)
+  , f_current_line_spacing(1)
+  , f_current_char_spacing(1)
+  , f_current_flash_info(f_default_flash_time_on,f_default_flash_time_off,true)
+  , f_current_flashing_state(false)
 {
 
 }
@@ -216,7 +236,6 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
     double current_time_on = HNS_Message2::fGetDefaultPageTimeOn(), current_time_off = HNS_Message2::fGetDefaultPageTimeOff();
     const double default_time_on = HNS_Message2::fGetDefaultPageTimeOn(), default_time_off = HNS_Message2::fGetDefaultPageTimeOff();
     int temp_error;
-    HNS_Font temp_font;
     HNS_Flashing_Text current_flash_info;
     bool on_first_temp;
     bool use_default_flash_on = false;
@@ -224,7 +243,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
     bool flash_enabled = false;
     size_t char_spacing = 1;
     ssize_t line_spacing = -1;
-    HNS_Message_Element2 temp_element;
+    HNS_Message_Element2 temp_element(this);
     f_multi = multi_string;
     ssize_t index;
     bool first;
@@ -250,6 +269,12 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
             error = HNS_MULTI_PARSER_SYNTAX_ERROR;
             my_error = HNS_MULTI_SYNTAX_ERROR_FONTNOTDEFINED;
             error_pos = 0;
+        }
+        //current_font is a valid font, populate line and character spacing from the current_font (should be default at this point)
+        else
+        {
+            f_current_line_spacing = fonts->at(current_font).fGetLineSpacing();
+            f_current_char_spacing = fonts->at(current_font).fGetCharSpacing();
         }
     }
 
@@ -440,6 +465,9 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                             {
                                 current_flash_info.fFlashOn() = f_default_flash_time_on;
                                 current_flash_info.fFlashOff() = f_default_flash_time_off;
+                                f_current_flash_info.fFlashOn() = f_default_flash_time_on;
+                                f_current_flash_info.fFlashOff() = f_default_flash_time_off;
+                                f_current_flash_info.fOnFirst() = true;
 
                                 //already existing text add it as an element to the page.
                                 if(!text.empty())
@@ -449,8 +477,9 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                         //this is actually the first page.
                                         fAddPage(current_time_on,current_time_off);
                                     }
-                                    temp_element = HNS_Message_Element2(text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
+                                    temp_element = HNS_Message_Element2(this,text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
                                     sign_brd_error = fAddElementToPage(temp_element, current_line_justification, current_page_justification);
+                                    sign_brd_error = fAddTextElementToPage(text);
                                     text = "";
                                     if(sign_brd_error != HNS_SGNBRD_ERROR_NONE)
                                     {
@@ -469,6 +498,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                 }
 
                                 flash_enabled = true;
+                                f_current_flashing_state = true;
                                 fsm_state = HNS_MULTI_PARSER_STATE_TEXT;
                             }
                             else
@@ -504,8 +534,9 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                                 //this is actually the first page.
                                                 fAddPage(current_time_on,current_time_off);
                                             }
-                                            temp_element = HNS_Message_Element2(text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
+                                            temp_element = HNS_Message_Element2(this,text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
                                             sign_brd_error = fAddElementToPage(temp_element, current_line_justification, current_page_justification);
+                                            sign_brd_error = fAddTextElementToPage(text);
                                             text = "";
                                             if(sign_brd_error != HNS_SGNBRD_ERROR_NONE)
                                             {
@@ -529,46 +560,60 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                             if(numbers.size() > 0)
                                             {
                                                 current_flash_info.fFlashOn() = numbers[0];
+                                                f_current_flash_info.fFlashOn() = numbers[0];
                                             }
                                             else
                                             {
                                                 current_flash_info.fFlashOn() = f_default_flash_time_on;
+                                                f_current_flash_info.fFlashOn() = f_default_flash_time_on;
                                             }
 
                                             if(numbers.size() > 1)
                                             {
                                                 current_flash_info.fFlashOff() = numbers[1];
+                                                f_current_flash_info.fFlashOff() = numbers[1];
                                             }
                                             else
                                             {
                                                 current_flash_info.fFlashOff() = f_default_flash_time_off;
+                                                f_current_flash_info.fFlashOff() = f_default_flash_time_off;
                                             }
                                             current_flash_info.fSetOnFirst(true);
+                                            f_current_flash_info.fSetOnFirst(true);
                                         }
                                         else
                                         {
                                             if(numbers.size() > 1)
                                             {
                                                 current_flash_info.fFlashOn() = numbers[1];
+                                                f_current_flash_info.fFlashOn() = numbers[1];
                                             }
                                             else
                                             {
                                                 current_flash_info.fFlashOn() = f_default_flash_time_on;
+                                                f_current_flash_info.fFlashOn() = f_default_flash_time_on;
                                             }
 
                                             if(numbers.size() > 0)
                                             {
                                                 current_flash_info.fFlashOff() = numbers[0];
+                                                f_current_flash_info.fFlashOff() = numbers[0];
                                             }
                                             else
                                             {
                                                 current_flash_info.fFlashOff() = f_default_flash_time_off;
+                                                f_current_flash_info.fFlashOff() = f_default_flash_time_off;
                                             }
                                             current_flash_info.fSetOnFirst(false);
+                                            f_current_flash_info.fSetOnFirst(false);
                                         }
                                         if(current_flash_info.fGetFlashOff() > 0 && current_flash_info.fGetFlashOn() > 0)
                                         {
                                             flash_enabled = true;
+                                        }
+                                        if(f_current_flash_info.fGetFlashOff() > 0 && f_current_flash_info.fGetFlashOn() > 0)
+                                        {
+                                            f_current_flashing_state = false;
                                         }
                                         fsm_state = HNS_MULTI_PARSER_STATE_TEXT;
                                     }
@@ -615,8 +660,9 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                         //this is actually the first page.
                                         fAddPage(current_time_on,current_time_off);
                                     }
-                                    temp_element = HNS_Message_Element2(text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info, char_spacing);
+                                    temp_element = HNS_Message_Element2(this,text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info, char_spacing);
                                     sign_brd_error = fAddElementToPage(temp_element, current_line_justification, current_page_justification);
+                                    sign_brd_error = fAddTextElementToPage(text);
 
                                     text = "";
 
@@ -645,6 +691,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                 else
                                 {
                                     current_font = numbers[0];
+                                    f_current_font = numbers[0];
                                 }
                                 fsm_state = HNS_MULTI_PARSER_STATE_TEXT;
                             }
@@ -658,8 +705,9 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                         //this is actually the first page.
                                         fAddPage(current_time_on,current_time_off);
                                     }
-                                    temp_element = HNS_Message_Element2(text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info, char_spacing);
+                                    temp_element = HNS_Message_Element2(this,text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info, char_spacing);
                                     sign_brd_error = fAddElementToPage(temp_element, current_line_justification, current_page_justification);
+                                    sign_brd_error = fAddTextElementToPage(text);
 
                                     text = "";
                                     if(sign_brd_error != HNS_SGNBRD_ERROR_NONE)
@@ -1107,8 +1155,9 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                 //this is actually the first page.
                                 fAddPage(current_time_on,current_time_off);
                             }
-                            temp_element = HNS_Message_Element2(text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
+                            temp_element = HNS_Message_Element2(this,text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
                             sign_brd_error = fAddElementToPage(temp_element, current_line_justification, current_page_justification);
+                            sign_brd_error = fAddTextElementToPage(text);
                             text = "";
 
                             if(sign_brd_error != HNS_SGNBRD_ERROR_NONE)
@@ -1160,8 +1209,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                 //this is actually the first page.
                                 fAddPage(current_time_on,current_time_off);
                             }
-                            temp_element = HNS_Message_Element2(itemp_x,itemp_y,graphics->at(index).fGetBitmap().fGetHeight(),graphics->at(index).fGetBitmap().fGetWidth(),numbers[0],flash_enabled,current_flash_info);
-                            sign_brd_error = fAddElementToPage(temp_element, current_line_justification, current_page_justification);
+                            sign_brd_error = fAddGraphicToPage(HNS_Graphical_Element(this,numbers[0],itemp_x,itemp_y,graphics->at(index).fGetBitmap().fGetWidth(),graphics->at(index).fGetBitmap().fGetHeight()));
 
                             if(sign_brd_error != HNS_SGNBRD_ERROR_NONE)
                             {
@@ -1272,8 +1320,9 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                         //this is actually the first page.
                                         fAddPage(current_time_on,current_time_off);
                                     }
-                                    temp_element = HNS_Message_Element2(text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
+                                    temp_element = HNS_Message_Element2(this,text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
                                     sign_brd_error = fAddElementToPage(temp_element, current_line_justification, current_page_justification);
+                                    sign_brd_error = fAddTextElementToPage(text);
                                     text = "";
                                     if(sign_brd_error != HNS_SGNBRD_ERROR_NONE)
                                     {
@@ -1295,21 +1344,25 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                 {
                                 case 1:
                                     current_line_justification = HNS_Message2::fGetDefaultLineJustification();
+                                    f_current_line_justification = f_default_line_justification;
                                     break;
                                 case 2:
                                     current_line_justification = HNS_JUSTIFICATION_LEFT;
+                                    f_current_line_justification = HNS_JUSTIFICATION_LEFT;
                                     break;
                                 case 3:
                                     current_line_justification = HNS_JUSTIFICATION_LINE_CENTER;
+                                    f_current_line_justification = HNS_JUSTIFICATION_LINE_CENTER;
                                     break;
                                 case 4:
                                     current_line_justification = HNS_JUSTIFICATION_RIGHT;
+                                    f_current_line_justification = HNS_JUSTIFICATION_RIGHT;
                                     break;
                                 case 5:
                                     current_line_justification = HNS_JUSTIFICATION_FULL;
+                                    f_current_line_justification = HNS_JUSTIFICATION_FULL;
                                     break;
                                 }
-                                fSetJustification(current_line_justification,current_page_justification);
                                 fsm_state = HNS_MULTI_PARSER_STATE_TEXT;
                             }
                             else
@@ -1345,26 +1398,30 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                         //this is actually the first page.
                                         fAddPage(current_time_on,current_time_off);
                                     }
-                                    temp_element = HNS_Message_Element2(text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
+                                    temp_element = HNS_Message_Element2(this,text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
                                     fAddElementToPage(temp_element, current_line_justification, current_page_justification);
+                                    fAddTextElementToPage(text);
                                     text = "";
                                 }
                                 switch(numbers[0])
                                 {
                                 case 1:
                                     current_page_justification = HNS_Message2::fGetDefaultPageJustification();
+                                    f_current_page_justification = f_default_page_justification;
                                     break;
                                 case 2:
                                     current_page_justification = HNS_JUSTIFICATION_TOP;
+                                    f_current_page_justification = HNS_JUSTIFICATION_TOP;
                                     break;
                                 case 3:
                                     current_page_justification = HNS_JUSTIFICATION_PAGE_CENTER;
+                                    f_current_page_justification = HNS_JUSTIFICATION_PAGE_CENTER;
                                     break;
                                 case 4:
                                     current_page_justification = HNS_JUSTIFICATION_BOTTOM;
+                                    f_current_page_justification = HNS_JUSTIFICATION_BOTTOM;
                                     break;
                                 }
-                                fSetJustification(current_line_justification,current_page_justification);
                                 fsm_state = HNS_MULTI_PARSER_STATE_TEXT;
                             }
                             else
@@ -1420,10 +1477,12 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                 if(numbers.size() == 0)
                                 {
                                     line_spacing = -1;
+                                    f_current_line_spacing = fonts->at(current_font).fGetLineSpacing();
                                 }
                                 else
                                 {
                                     line_spacing = numbers[0];
+                                    f_current_line_spacing = numbers[0];
                                 }
 
                                 if(f_pages.size() == 0)
@@ -1431,8 +1490,9 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                     //this is actually the first page.
                                     fAddPage(current_time_on,current_time_off);
                                 }
-                                temp_element = HNS_Message_Element2(text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
+                                temp_element = HNS_Message_Element2(this, text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
                                 sign_brd_error = fAddElementToPage(temp_element,current_line_justification, current_page_justification,true,line_spacing);
+                                sign_brd_error = fAddTextElementToPage(text,true,line_spacing);
 
                                 text = "";
                                 fsm_state = HNS_MULTI_PARSER_STATE_TEXT;
@@ -1480,8 +1540,9 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                     //this is actually the first page.
                                     fAddPage(current_time_on,current_time_off);
                                 }
-                                temp_element = HNS_Message_Element2(text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
+                                temp_element = HNS_Message_Element2(this, text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
                                 sign_brd_error = fAddElementToPage(temp_element, current_line_justification, current_page_justification);
+                                sign_brd_error = fAddTextElementToPage(text);
                             }
                             text = "";
                             if(sign_brd_error != HNS_SGNBRD_ERROR_NONE)
@@ -1570,17 +1631,23 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                             {
                                 current_time_on = default_time_on;
                                 current_time_off = default_time_off;
+                                f_current_page_time_on = f_default_page_time_on;
+                                f_current_page_time_off = f_default_page_time_off;
                             }
                             else if(numbers.size() == 1)
                             {
                                 current_time_on = static_cast<double>(numbers[0])/10.0;
                                 current_time_off = default_time_off;
+                                f_current_page_time_on = static_cast<double>(numbers[0])/10.0;
+                                f_current_page_time_off = f_default_page_time_off;
                                 fsm_state = HNS_MULTI_PARSER_STATE_TEXT;
                             }
                             else if(numbers.size() == 2)
                             {
                                 current_time_on = static_cast<double>(numbers[0])/10.0;
                                 current_time_off = static_cast<double>(numbers[1])/10.0;
+                                f_current_page_time_on = static_cast<double>(numbers[0])/10.0;
+                                f_current_page_time_off = static_cast<double>(numbers[1])/10.0;
                                 fsm_state = HNS_MULTI_PARSER_STATE_TEXT;
                             }
                             else
@@ -1645,8 +1712,9 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                         //this is actually the first page.
                                         fAddPage(current_time_on,current_time_off);
                                     }
-                                    temp_element = HNS_Message_Element2(text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
+                                    temp_element = HNS_Message_Element2(this, text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
                                     sign_brd_error = fAddElementToPage(temp_element, current_line_justification, current_page_justification);
+                                    sign_brd_error = fAddTextElementToPage(text);
                                     text = "";
                                     if(sign_brd_error != HNS_SGNBRD_ERROR_NONE)
                                     {
@@ -1664,6 +1732,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                     }
                                 }
                                 char_spacing = numbers[0];
+                                f_current_char_spacing = numbers[0];
 
                                 fsm_state = HNS_MULTI_PARSER_STATE_TEXT;
                             }
@@ -1725,8 +1794,9 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                                 //this is actually the first page.
                                                 fAddPage(current_time_on,current_time_off);
                                             }
-                                            temp_element = HNS_Message_Element2(text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
+                                            temp_element = HNS_Message_Element2(this,text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
                                             sign_brd_error = fAddElementToPage(temp_element, current_line_justification, current_page_justification);
+                                            sign_brd_error = fAddTextElementToPage(text);
                                             text = "";
                                             if(sign_brd_error != HNS_SGNBRD_ERROR_NONE)
                                             {
@@ -1744,6 +1814,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                             }
                                         }
                                         char_spacing = 1;
+                                        f_current_char_spacing = fonts->at(current_font).fGetCharSpacing();
 
                                         fsm_state = HNS_MULTI_PARSER_STATE_TEXT;
                                     }
@@ -1798,8 +1869,9 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                                 //this is actually the first page.
                                                 fAddPage(current_time_on,current_time_off);
                                             }
-                                            temp_element = HNS_Message_Element2(text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
+                                            temp_element = HNS_Message_Element2(this,text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
                                             sign_brd_error = fAddElementToPage(temp_element, current_line_justification, current_page_justification);
+                                            sign_brd_error = fAddTextElementToPage(text);
                                             text = "";
                                             if(sign_brd_error != HNS_SGNBRD_ERROR_NONE)
                                             {
@@ -1818,6 +1890,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                         }
 
                                         flash_enabled = false;
+                                        f_current_flashing_state = false;
                                         fsm_state = HNS_MULTI_PARSER_STATE_TEXT;
                                     }
                                     else
@@ -1902,8 +1975,9 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
             //this is actually the first page.
             fAddPage(current_time_on,current_time_off);
         }
-        temp_element = HNS_Message_Element2(text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
+        temp_element = HNS_Message_Element2(this,text,fonts->at(current_font-1),current_font,flash_enabled,current_flash_info,char_spacing);
         sign_brd_error = fAddElementToPage(temp_element, current_line_justification, current_page_justification);
+        sign_brd_error = fAddTextElementToPage(text);
 
         if(sign_brd_error != HNS_SGNBRD_ERROR_NONE)
         {
@@ -1945,7 +2019,7 @@ std::string HNS_Message2::fGetMULTI() const
 
 void HNS_Message2::fAddPage(const double &page_time_on, const double &page_time_off)
 {
-    HNS_Message_Page2 temp_page(page_time_on,page_time_off,f_default_signboard_info);
+    HNS_Message_Page2 temp_page(this,page_time_on,page_time_off,f_default_signboard_info);
     f_pages.push_back(temp_page);
 }
 
@@ -1957,6 +2031,31 @@ type_hns_signboard_error HNS_Message2::fAddElementToPage(HNS_Message_Element2 &e
     {
         error = f_pages[f_pages.size()-1].fAddElement(element,line_justification,page_justification,newline,line_spacing);
     }
+
+    return error;
+}
+
+type_hns_signboard_error HNS_Message2::fAddTextElementToPage(const string &text, const bool newline, const ssize_t &line_spacing)
+{
+    type_hns_signboard_error error = HNS_SGNBRD_ERROR_NONE;
+
+    if(f_pages.size() > 0)
+    {
+        error = f_pages[f_pages.size()-1].fAddText(text,newline,line_spacing);
+    }
+
+    return error;
+}
+
+type_hns_signboard_error HNS_Message2::fAddGraphicToPage(const HNS_Graphical_Element &graphic)
+{
+    type_hns_signboard_error error = HNS_SGNBRD_ERROR_NONE;
+
+    if(f_pages.size() > 0)
+    {
+        error = f_pages[f_pages.size()-1].fAddGraphic(graphic);
+    }
+
     return error;
 }
 
@@ -2027,16 +2126,15 @@ void HNS_Message2::fSetFontTest(const std::vector<HNS_Font> *fonts, const size_t
 {
     f_multi = "";
     f_pages.clear();
-    HNS_Message_Element2 temp_element;
-    HNS_Message_Justified_Element temp_just_element;
-    HNS_Message_Page2 temp_page(2.0,0.0,f_default_signboard_info);
+    HNS_Message_Element2 temp_element(this);
+    HNS_Message_Justified_Element temp_just_element(this);
+    HNS_Message_Page2 temp_page(this,2.0,0.0,f_default_signboard_info);
     string multi;
     char temp_char = 'A';
     string tempstring;
     HNS_Font tempfont;
     bool first_line = true;
     stringstream ss;
-    size_t test = 0;
 
     if(font_no-1 < fonts->size())
     {
@@ -2120,7 +2218,6 @@ void HNS_Message2::fSetFontTest(const std::vector<HNS_Font> *fonts, const size_t
                 multi = multi + "[nl]";
             }
             multi = multi + tempstring;
-            test = multi.size();
             temp_page.fAddElement(temp_element,HNS_JUSTIFICATION_LINE_CENTER,HNS_JUSTIFICATION_PAGE_CENTER,true);
 
             tempstring.clear();
@@ -2234,7 +2331,7 @@ HNS_Message_Page2 HNS_Message2::fGetPage(const size_t &page_no) const
     }
     else
     {
-        return HNS_Message_Page2();
+        return HNS_Message_Page2(this);
     }
 }
 
@@ -2249,14 +2346,6 @@ vector<int> HNS_Message2::fGetFontsUsed()
     }
 
     return result;
-}
-
-void HNS_Message2::fSetJustification(const type_justification_line &line_justification, const type_justification_page &page_justification)
-{
-    if(f_pages.size() > 0)
-    {
-        f_pages[f_pages.size()-1].fNewJustification(line_justification,page_justification);
-    }
 }
 
 size_t HNS_Message2::fGetPageIndexFromTime(const int64_t &time, unsigned int &time_in_page)
@@ -2320,18 +2409,20 @@ void HNS_Message2::fResetMulti()
 {
 }
 
-HNS_Message_Page2::HNS_Message_Page2():
+HNS_Message_Page2::HNS_Message_Page2(const HNS_Message2 *parent):
     f_page_time_on(HNS_Message2::fGetDefaultPageTimeOn()),
     f_page_time_off(HNS_Message2::fGetDefaultPageTimeOff()),
-    f_signboard_info(HNS_Message2::fGetDefaultSignBoardInfo())
+    f_signboard_info(HNS_Message2::fGetDefaultSignBoardInfo()),
+    f_parent_message(parent)
 {
 
 }
 
-HNS_Message_Page2::HNS_Message_Page2(const double &page_time_on, const double &page_time_off, const HNS_SignBoard_Info &sign_board_info):
+HNS_Message_Page2::HNS_Message_Page2(const HNS_Message2 *parent, const double &page_time_on, const double &page_time_off, const HNS_SignBoard_Info &sign_board_info):
     f_page_time_on(page_time_on)
   , f_page_time_off(page_time_off)
   , f_signboard_info(sign_board_info)
+  , f_parent_message(parent)
 {
 }
 
@@ -2346,12 +2437,12 @@ void HNS_Message_Page2::fNewJustification(const type_justification_line &line_ju
         }
         else
         {
-            f_elements.push_back(HNS_Message_Justified_Element(line_justification,page_justification));
+            f_elements.push_back(HNS_Message_Justified_Element(f_parent_message,line_justification,page_justification));
         }
     }
     else
     {
-        f_elements.push_back(HNS_Message_Justified_Element(line_justification,page_justification));
+        f_elements.push_back(HNS_Message_Justified_Element(f_parent_message,line_justification,page_justification));
     }
 }
 
@@ -2363,25 +2454,65 @@ type_hns_signboard_error HNS_Message_Page2::fAddElement(HNS_Message_Element2 &el
                                     const ssize_t &/*char_spacing*/)
 {
     type_hns_signboard_error error = HNS_SGNBRD_ERROR_NONE;
-    if(f_elements.size() > 0)
+//    if(f_elements.size() > 0)
+//    {
+//        if(element.fIsGraphic())
+//        {
+//            f_elements.push_back(HNS_Message_Justified_Element(f_parent_message,line_justification,page_justification));
+//            f_elements[f_elements.size()-1].fAddElement(element,newline,line_spacing);
+//        }
+//        else
+//        {
+//            f_elements[fLastTextElement()].fAddElement(element,newline,line_spacing);
+//        }
+//    }
+//    else
+//    {
+//        f_elements.push_back(HNS_Message_Justified_Element(f_parent_message,line_justification,page_justification));
+//        f_elements[f_elements.size()-1].fAddElement(element,newline,line_spacing);
+//    }
+
+//    fSortElements();
+//    HNS_SignBoard temp_signboard(f_signboard_info);
+//    error = fUpdateSignBoard(temp_signboard);
+
+    return error;
+}
+
+type_hns_signboard_error HNS_Message_Page2::fAddText(const string &text, const bool &newline, const ssize_t &line_spacing, const ssize_t &char_spacing)
+{
+    type_hns_signboard_error error = HNS_SGNBRD_ERROR_NONE;
+
+    if(f_parent_message != nullptr)
     {
-        if(element.fIsGraphic())
+        if(f_page_elements.size() > 0)
         {
-            f_elements.push_back(HNS_Message_Justified_Element(line_justification,page_justification));
-            f_elements[f_elements.size()-1].fAddElement(element,newline,line_spacing);
+            //New page justification, add a new block
+            if(f_parent_message->fGetCurrentPageJustification() != f_page_elements[f_page_elements.size()-1].fGetPageJustification())
+            {
+                f_page_elements.push_back(HNS_Message_Page_Justified_Element(f_parent_message));
+            }
+            f_page_elements[f_page_elements.size()-1].fAddText(text,newline);
         }
         else
         {
-            f_elements[fLastTextElement()].fAddElement(element,newline,line_spacing);
+            f_page_elements.push_back(HNS_Message_Page_Justified_Element(f_parent_message));
+            f_page_elements[f_page_elements.size()-1].fAddText(text,newline);
         }
-    }
-    else
-    {
-        f_elements.push_back(HNS_Message_Justified_Element(line_justification,page_justification));
-        f_elements[f_elements.size()-1].fAddElement(element,newline,line_spacing);
+
+        HNS_SignBoard temp_signboard(f_signboard_info);
+        error = fUpdateSignBoard(temp_signboard);
     }
 
-    fSortElements();
+    return error;
+}
+
+type_hns_signboard_error HNS_Message_Page2::fAddGraphic(const HNS_Graphical_Element &graphic)
+{
+    type_hns_signboard_error error = HNS_SGNBRD_ERROR_NONE;
+
+    f_graphics.push_back(graphic);
+
     HNS_SignBoard temp_signboard(f_signboard_info);
     error = fUpdateSignBoard(temp_signboard);
 
@@ -2423,12 +2554,12 @@ double &HNS_Message_Page2::fPageTimeOff()
 
 type_justification_line HNS_Message_Page2::fGetLastLineJustification()
 {
-    return f_elements[fLastTextElement()].fGetLineJustification();
+    return f_elements[f_elements.size()-1].fGetLineJustification();
 }
 
 type_justification_page HNS_Message_Page2::fGetLastPageJustification()
 {
-    return f_elements[fLastTextElement()].fGetPageJustification();
+    return f_elements[f_elements.size()-1].fGetPageJustification();
 }
 
 HNS_SignBoard HNS_Message_Page2::fGetSignBoard(const int64_t &time, const bool &preview_mode, const bool &single_page)
@@ -2458,14 +2589,7 @@ bool HNS_Message_Page2::fSortElements()
 
     for(size_t i=0;i<f_elements.size();i++)
     {
-        if(f_elements[i].fIsGraphic())
-        {
-            graphic_elements.push_back(f_elements[i]);
-        }
-        else
-        {
-            sorted_elements.push_back(f_elements[i]);
-        }
+        sorted_elements.push_back(f_elements[i]);
     }
     f_elements.clear();
     f_elements.insert(f_elements.end(),sorted_elements.begin(),sorted_elements.end());
@@ -2476,7 +2600,6 @@ bool HNS_Message_Page2::fSortElements()
 
 type_hns_signboard_error HNS_Message_Page2::fUpdateSignBoard(HNS_SignBoard &sign_board, const int64_t &time, const bool &preview_mode, const bool &single_page)
 {
-    int test = 0;
     type_hns_signboard_error error = HNS_SGNBRD_ERROR_NONE;
 
     sign_board.fClearBoard();
@@ -2488,39 +2611,123 @@ type_hns_signboard_error HNS_Message_Page2::fUpdateSignBoard(HNS_SignBoard &sign
             error = static_cast<type_hns_signboard_error>(static_cast<int>(error) | static_cast<int>(sign_board.fAddElement(f_elements[ui],time,preview_mode)));
         }
     }
-    else
-    {
-        test = 1;
-    }
 
     return error;
 }
 
-size_t HNS_Message_Page2::fLastTextElement() const
+HNS_Graphical_Element::HNS_Graphical_Element(const HNS_Message2 *parent):
+    f_graphic_no(0)
+  , f_x(0)
+  , f_y(0)
+  , f_parent_message(parent)
 {
-    size_t last_text = 0;
-
-    for(size_t i = 0;i<f_elements.size();i++)
+    if(f_parent_message != nullptr)
     {
-        if(!f_elements[i].fIsGraphic())
+        f_flash_info = f_parent_message->fGetCurrentFlashingInfo();
+        f_is_flashing = f_parent_message->fGetCurrentFlashState();
+    }
+    else
+    {
+        f_is_flashing = false;
+    }
+}
+
+HNS_Graphical_Element::HNS_Graphical_Element(const HNS_Message2 *parent, const int &graphic_no, const int &x, const int &y, const int &width, const int &height):
+    f_graphic_no(graphic_no)
+  , f_x(x)
+  , f_y(y)
+  , f_width(width)
+  , f_height(height)
+  , f_parent_message(parent)
+{
+    if(f_parent_message != nullptr)
+    {
+        f_flash_info = f_parent_message->fGetCurrentFlashingInfo();
+        f_is_flashing = f_parent_message->fGetCurrentFlashState();
+    }
+    else
+    {
+        f_is_flashing = false;
+    }
+}
+
+HNS_Bitmap HNS_Graphical_Element::fGetBitmap(const std::vector<HNS_Graphic> *graphics, const int64_t &time) const
+{
+    HNS_Bitmap result;
+
+    if(f_parent_message != nullptr)
+    {
+        if(IsFlashOn(time,f_parent_message->fGetCurrentFlashingInfo()))
         {
-            last_text = i;
+            for(size_t i = 0;i<graphics->size();i++)
+            {
+                if(graphics->at(i).fGetGraphicNumber() == f_graphic_no)
+                {
+                    result = graphics->at(i).fGetBitmap();
+                    break;
+                }
+            }
         }
     }
 
-    return last_text;
+    return result;
 }
 
-HNS_Message_Justified_Element::HNS_Message_Justified_Element():
+HNS_Message_Page_Justified_Element::HNS_Message_Page_Justified_Element(const HNS_Message2 *parent):
+    f_page_justification(HNS_JUSTIFICATION_PAGE_CENTER)
+  , f_parent_message(parent)
+{
+    size_t dummy = f_elements.size();
+    if(f_parent_message != nullptr)
+    {
+        f_page_justification = f_parent_message->fGetCurrentPageJustification();
+    }
+    f_elements.clear();
+}
+
+void HNS_Message_Page_Justified_Element::fAddText(const std::string &text, const bool &newline)
+{
+    if(f_parent_message != nullptr)
+    {
+        size_t dummy = f_elements.size();
+        bool test = f_elements.empty();
+        if(f_elements.size() > 0)
+        {
+            if(f_elements[f_elements.size()-1].fGetLineJustification() != f_parent_message->fGetCurrentLineJustification())
+            {
+                f_elements.push_back(HNS_Message_Justified_Element(f_parent_message));
+            }
+        }
+        else
+        {
+            f_elements.push_back(HNS_Message_Justified_Element(f_parent_message));
+        }
+        f_elements[f_elements.size()-1].fAddText(text,newline);
+    }
+}
+
+HNS_Bitmap HNS_Message_Page_Justified_Element::fGetBitmap(const std::vector<HNS_Font> *fonts, const std::vector<HNS_Graphic> *graphics, const int64_t &time, const bool &preview_mode) const
+{
+    return HNS_Bitmap();
+}
+
+type_justification_page HNS_Message_Page_Justified_Element::fGetPageJustification() const
+{
+    return HNS_JUSTIFICATION_PAGE_CENTER;
+}
+
+HNS_Message_Justified_Element::HNS_Message_Justified_Element(const HNS_Message2 *parent):
     f_line_no(0)
+  , f_parent_message(parent)
 {
 
 }
 
-HNS_Message_Justified_Element::HNS_Message_Justified_Element(const type_justification_line &line_justification, const type_justification_page &page_justification):
+HNS_Message_Justified_Element::HNS_Message_Justified_Element(const HNS_Message2 *parent, const type_justification_line &line_justification, const type_justification_page &page_justification):
     f_line_justification(line_justification),
     f_page_justification(page_justification),
     f_line_no(0)
+  , f_parent_message(parent)
 {
 
 }
@@ -2545,6 +2752,11 @@ void HNS_Message_Justified_Element::fAddElement(HNS_Message_Element2 &element, c
     }
 }
 
+void HNS_Message_Justified_Element::fAddText(const string &text, const bool &newline)
+{
+
+}
+
 void HNS_Message_Justified_Element::fChangeJustification(const type_justification_line &line_justification, const type_justification_page &page_justification)
 {
     f_line_justification = line_justification;
@@ -2552,7 +2764,7 @@ void HNS_Message_Justified_Element::fChangeJustification(const type_justificatio
 }
 
 //TODO Get the bitmap to respect flashing and times.
-HNS_Bitmap HNS_Message_Justified_Element::fGetBitmap(const vector<HNS_Font> *fonts, const std::vector<HNS_Graphic> *graphics, const int64_t &time, const bool &preview_mode) const
+HNS_Bitmap HNS_Message_Justified_Element::fGetBitmap(const vector<HNS_Font> *fonts, const int64_t &time, const bool &preview_mode) const
 {
     size_t line = 0;
     int x,y;
@@ -2563,66 +2775,56 @@ HNS_Bitmap HNS_Message_Justified_Element::fGetBitmap(const vector<HNS_Font> *fon
     size_t height = fGetHeight();
     HNS_Bitmap result;
 
-    if(fIsGraphic())
+    for(size_t i = 0;i<line_widths.size();i++)
     {
-        if(IsFlashOn(time,f_elements[0].fGetFlashInfo()))
+        if(line_widths[i] > widest_line)
         {
-            result = f_elements[0].fGetBitmap(fonts,graphics);
+            widest_line = line_widths[i];
         }
     }
-    else
+
+    result = HNS_Bitmap(height,widest_line);
+
+    for(size_t i=0;i<f_elements.size();i++)
     {
-        for(size_t i = 0;i<line_widths.size();i++)
+        if(i==0)
         {
-            if(line_widths[i] > widest_line)
-            {
-                widest_line = line_widths[i];
-            }
+            line = f_elements[i].fGetLineNo();
         }
-
-        result = HNS_Bitmap(height,widest_line);
-
-        for(size_t i=0;i<f_elements.size();i++)
+        if((line != f_elements[i].fGetLineNo()) || (i == 0))
         {
-            if(i==0)
+            if(i != 0)
             {
-                line = f_elements[i].fGetLineNo();
+                line_widths_index++;
             }
-            if((line != f_elements[i].fGetLineNo()) || (i == 0))
+            switch(f_line_justification)
             {
-                if(i != 0)
-                {
-                    line_widths_index++;
-                }
-                switch(f_line_justification)
-                {
-                case HNS_JUSTIFICATION_LEFT:
-                    x = 0;
-                    break;
-                case HNS_JUSTIFICATION_LINE_CENTER:
-                    x = (widest_line - line_widths[line_widths_index])/2;
-                    break;
-                case HNS_JUSTIFICATION_RIGHT:
-                    x = widest_line - line_widths[line_widths_index];
-                    break;
-                case HNS_JUSTIFICATION_FULL:
-                    //shouldn't ever get here
-                    break;
-                }
+            case HNS_JUSTIFICATION_LEFT:
+                x = 0;
+                break;
+            case HNS_JUSTIFICATION_LINE_CENTER:
+                x = (widest_line - line_widths[line_widths_index])/2;
+                break;
+            case HNS_JUSTIFICATION_RIGHT:
+                x = widest_line - line_widths[line_widths_index];
+                break;
+            case HNS_JUSTIFICATION_FULL:
+                //shouldn't ever get here
+                break;
+            }
 
-                line = f_elements[i].fGetLineNo();
-            }
-            else
-            {
-                x = x + f_elements[i-1].fGetWidth() + f_elements[i].fGetCharSpacing();
-            }
-            y = fGetYPos(line_heights,line_widths_index);
-            //NTCIP 1203 section 6.4.7 says that differing height fonts on the same line should align on the bottom
-            y = y + (line_heights[line_widths_index] - f_elements[i].fGetHeight());
-            if(preview_mode || !f_elements[i].fGetIsFlashing() || IsFlashOn(time,f_elements[i].fGetFlashInfo()))
-            {
-                result.fCopy(f_elements[i].fGetBitmap(fonts, graphics),x,y);
-            }
+            line = f_elements[i].fGetLineNo();
+        }
+        else
+        {
+            x = x + f_elements[i-1].fGetWidth() + f_elements[i].fGetCharSpacing();
+        }
+        y = fGetYPos(line_heights,line_widths_index);
+        //NTCIP 1203 section 6.4.7 says that differing height fonts on the same line should align on the bottom
+        y = y + (line_heights[line_widths_index] - f_elements[i].fGetHeight());
+        if(preview_mode || !f_elements[i].fGetIsFlashing() || IsFlashOn(time,f_elements[i].fGetFlashInfo()))
+        {
+            result.fCopy(f_elements[i].fGetBitmap(fonts),x,y);
         }
     }
 
@@ -2727,7 +2929,7 @@ HNS_Bitmap HNS_Message_Justified_Element::fGetBitmapFullJustified(const std::vec
         //now resize the element
         if(line == widest_line_index)
         {
-            result.fCopy(f_elements[i].fGetBitmap(fonts, nullptr),x,y);
+            result.fCopy(f_elements[i].fGetBitmap(fonts),x,y);
         }
         else
         {
@@ -2746,30 +2948,6 @@ type_justification_line HNS_Message_Justified_Element::fGetLineJustification() c
 type_justification_page HNS_Message_Justified_Element::fGetPageJustification() const
 {
     return f_page_justification;
-}
-
-bool HNS_Message_Justified_Element::fIsGraphic() const
-{
-    bool is_graphic = false;
-
-    if(f_elements.size() == 1)
-    {
-        is_graphic = f_elements[0].fIsGraphic();
-    }
-
-    return is_graphic;
-}
-
-HNS_Point HNS_Message_Justified_Element::fGetGraphicPos() const
-{
-    HNS_Point result;
-
-    if(f_elements.size() >= 1 && fIsGraphic())
-    {
-        result = HNS_Point(f_elements[0].fGetX(),f_elements[0].fGetY());
-    }
-
-    return result;
 }
 
 vector<size_t> HNS_Message_Justified_Element::fGetLineWidths() const
@@ -2939,10 +3117,7 @@ vector<int> HNS_Message_Justified_Element::fGetFontsUsed()
 
     for(size_t i=0;i<f_elements.size();i++)
     {
-        if(!f_elements[i].fIsGraphic())
-        {
-            result = AddFontToFontUsedList(result,f_elements[i].fGetFontNo());
-        }
+        result = AddFontToFontUsedList(result,f_elements[i].fGetFontNo());
     }
 
     return result;
@@ -2976,49 +3151,35 @@ HNS_Message_Element2 HNS_Message_Justified_Element::fGetElement(const size_t &in
     }
     else
     {
-        return HNS_Message_Element2();
+        return HNS_Message_Element2(f_parent_message);
     }
 }
 
-HNS_Message_Element2::HNS_Message_Element2():
-    f_is_graphic(false),
+HNS_Message_Element2::HNS_Message_Element2(const HNS_Message2 *parent):
     f_is_flashing(false),
     f_char_spacing(1),
-    f_x(0),
-    f_y(0),
     f_width(0),
     f_height(0),
-    f_line_no(0)
+    f_line_no(0),
+    f_parent_message(parent)
 {
 
 }
 
-HNS_Message_Element2::HNS_Message_Element2(const string &input, const HNS_Font &font, const int &font_no, const bool &is_flashing, const HNS_Flashing_Text &flash_info, const size_t &char_spacing, const int &line_no):
-    f_is_graphic(false),
-    f_graphic_no(-1),
+HNS_Message_Element2::HNS_Message_Element2(const HNS_Message2 *parent,const string &input, const HNS_Font &font, const int &font_no, const bool &is_flashing, const HNS_Flashing_Text &flash_info, const size_t &char_spacing, const int &line_no):
     f_char_spacing(char_spacing),
-    f_x(0),
-    f_y(0),
     f_width(0),
     f_height(0),
-    f_line_no(line_no)
+    f_line_no(line_no),
+    f_parent_message(parent)
 {
     fSetText(input,font, font_no, is_flashing, flash_info);
-}
-
-HNS_Message_Element2::HNS_Message_Element2(const size_t &x, const size_t &y, const size_t &height, const size_t &width, const int &graphic_no, const bool &is_flashing, const HNS_Flashing_Text &flash_info):
-    f_font_no(-1)
-{
-    f_is_flashing = is_flashing;
-    f_flash_info = flash_info;
-    fSetGraphic(x,y,height,width,graphic_no);
 }
 
 void HNS_Message_Element2::fSetText(const std::string &input, const HNS_Font &font, const int &font_no, const bool &is_flashing, const HNS_Flashing_Text &flash_info)
 {
     f_text = input;
     f_font_no = font_no;
-    f_is_graphic = false;
     f_is_flashing = is_flashing;
     f_flash_info = flash_info;
 
@@ -3037,34 +3198,9 @@ void HNS_Message_Element2::fSetText(const std::string &input, const HNS_Font &fo
     }
 }
 
-void HNS_Message_Element2::fSetGraphic(const size_t &x, const size_t &y, const size_t &height, const size_t &width, const int &graphic_no)
-{
-    f_width = width;
-    f_height = height;
-    f_graphic_no = graphic_no;
-    f_is_graphic = true;
-    f_x = x;
-    f_y = y;
-}
-
 void HNS_Message_Element2::fSetLineNo(const size_t &line_no)
 {
     f_line_no = line_no;
-}
-
-bool HNS_Message_Element2::fIsGraphic() const
-{
-    return f_is_graphic;
-}
-
-size_t HNS_Message_Element2::fGetX() const
-{
-    return f_x;
-}
-
-size_t HNS_Message_Element2::fGetY() const
-{
-    return f_y;
 }
 
 size_t HNS_Message_Element2::fGetWidth() const
@@ -3117,22 +3253,11 @@ int HNS_Message_Element2::fGetFontNo() const
     return f_font_no;
 }
 
-HNS_Bitmap HNS_Message_Element2::fGetBitmap(const vector<HNS_Font> *fonts, const std::vector<HNS_Graphic> *graphics) const
+HNS_Bitmap HNS_Message_Element2::fGetBitmap(const vector<HNS_Font> *fonts) const
 {
     HNS_Character temp_character;
     HNS_Bitmap result;
-    if(fIsGraphic() && (graphics != nullptr))
-    {
-        for(size_t i = 0;i<graphics->size();i++)
-        {
-            if(graphics->at(i).fGetGraphicNumber() == f_graphic_no)
-            {
-                result = graphics->at(i).fGetBitmap();
-                break;
-            }
-        }
-    }
-    else if(fonts != nullptr)
+    if(fonts != nullptr)
     {
         if(static_cast<size_t>(f_font_no-1) < fonts->size())
         {

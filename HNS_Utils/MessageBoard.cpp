@@ -27,6 +27,7 @@ HNS_SignBoard_Info::HNS_SignBoard_Info():
   , f_specials(HNS_SGNBRD_SPECIAL_NONE)
   , f_special_data(gk_num_specials)
   , f_ui_mode(HNS_UI_MODE_NORMAL)
+  , f_beacon_port(46)
 {
 
 }
@@ -539,244 +540,245 @@ void HNS_SignBoard::fSetGraphics(const vector<HNS_Graphic> &graphics)
     f_graphics = graphics;
 }
 
+//TODO Rebuild this with the new structure of elements (graphics and text are fully separated)
 type_hns_signboard_error HNS_SignBoard::fAddElement(HNS_Message_Justified_Element &element, const int64_t &time, const bool &preview_mode)
 {
-    HNS_Message_Element2 temp_element;
-    size_t current_line = 0;
-    string tempstring;
-    if(f_signboard_info.fGetType() == HNS_BRD_TRAILER_FULL_MATRIX)
-    {
-        size_t x,y;
-        HNS_Bitmap temp_bitmap;
-        if(f_boards.size() == (fGetBoardsWide() * fGetBoardsTall()) )
-        {
-            //first step, create a temporary bitmap with the element.
-            //first task in the first step is to find the height of each line.  Borrow heavily from existing work done with my first generation of message handling
-            if(element.fGetLineJustification() == HNS_JUSTIFICATION_FULL)
-            {
-                temp_bitmap = element.fGetBitmapFullJustified(&f_fonts);
-            }
-            else
-            {
-                temp_bitmap = element.fGetBitmap(&f_fonts, &f_graphics,time,preview_mode);
-            }
+//    HNS_Message_Element2 temp_element(element.fGetParentMessage());
+//    size_t current_line = 0;
+//    string tempstring;
+//    if(f_signboard_info.fGetType() == HNS_BRD_TRAILER_FULL_MATRIX)
+//    {
+//        size_t x,y;
+//        HNS_Bitmap temp_bitmap;
+//        if(f_boards.size() == (fGetBoardsWide() * fGetBoardsTall()) )
+//        {
+//            //first step, create a temporary bitmap with the element.
+//            //first task in the first step is to find the height of each line.  Borrow heavily from existing work done with my first generation of message handling
+//            if(element.fGetLineJustification() == HNS_JUSTIFICATION_FULL)
+//            {
+//                temp_bitmap = element.fGetBitmapFullJustified(&f_fonts);
+//            }
+//            else
+//            {
+//                temp_bitmap = element.fGetBitmap(&f_fonts, &f_graphics,time,preview_mode);
+//            }
 
-            if(element.fIsGraphic())
-            {
-                x = element.fGetGraphicPos().fGetX();
-                y = element.fGetGraphicPos().fGetY();
-            }
-            else
-            {
-                switch(element.fGetLineJustification())
-                {
-                case HNS_JUSTIFICATION_LEFT:
-                    if(temp_bitmap.fGetWidth() > fGetWidth())
-                    {
-                        return HNS_SGNBRD_ERROR_TOOWIDE;
-                    }
-                    x = 0;
-                    break;
-                case HNS_JUSTIFICATION_FULL:
-                case HNS_JUSTIFICATION_LINE_CENTER:
-                    if(temp_bitmap.fGetWidth() <= fGetWidth())
-                    {
-                        x = (fGetWidth() - temp_bitmap.fGetWidth())/2;
-                    }
-                    else
-                    {
-                        return HNS_SGNBRD_ERROR_TOOWIDE;
-                    }
-                    break;
-                case HNS_JUSTIFICATION_RIGHT:
-                    if(temp_bitmap.fGetWidth() <= fGetWidth())
-                    {
-                        x = fGetWidth() - temp_bitmap.fGetWidth();
-                    }
-                    else
-                    {
-                        return HNS_SGNBRD_ERROR_TOOWIDE;
-                    }
-                    break;
-                }
+//            if(element.fIsGraphic())
+//            {
+//                x = element.fGetGraphicPos().fGetX();
+//                y = element.fGetGraphicPos().fGetY();
+//            }
+//            else
+//            {
+//                switch(element.fGetLineJustification())
+//                {
+//                case HNS_JUSTIFICATION_LEFT:
+//                    if(temp_bitmap.fGetWidth() > fGetWidth())
+//                    {
+//                        return HNS_SGNBRD_ERROR_TOOWIDE;
+//                    }
+//                    x = 0;
+//                    break;
+//                case HNS_JUSTIFICATION_FULL:
+//                case HNS_JUSTIFICATION_LINE_CENTER:
+//                    if(temp_bitmap.fGetWidth() <= fGetWidth())
+//                    {
+//                        x = (fGetWidth() - temp_bitmap.fGetWidth())/2;
+//                    }
+//                    else
+//                    {
+//                        return HNS_SGNBRD_ERROR_TOOWIDE;
+//                    }
+//                    break;
+//                case HNS_JUSTIFICATION_RIGHT:
+//                    if(temp_bitmap.fGetWidth() <= fGetWidth())
+//                    {
+//                        x = fGetWidth() - temp_bitmap.fGetWidth();
+//                    }
+//                    else
+//                    {
+//                        return HNS_SGNBRD_ERROR_TOOWIDE;
+//                    }
+//                    break;
+//                }
 
-                switch(element.fGetPageJustification())
-                {
-                case HNS_JUSTIFICATION_TOP:
-                    if(temp_bitmap.fGetHeight() > fGetHeight())
-                    {
-                        return HNS_SGNBRD_ERROR_TOOTALL;
-                    }
-                    y = 0;
-                    break;
-                case HNS_JUSTIFICATION_PAGE_CENTER:
-                    if(temp_bitmap.fGetHeight() <= fGetHeight())
-                    {
-                        y = (fGetHeight() - temp_bitmap.fGetHeight())/2;
-                    }
-                    else
-                    {
-                        return HNS_SGNBRD_ERROR_TOOTALL;
-                    }
-                    break;
-                case HNS_JUSTIFICATION_BOTTOM:
-                    if(temp_bitmap.fGetHeight() <= fGetHeight())
-                    {
-                        y = fGetHeight() - temp_bitmap.fGetHeight();
-                    }
-                    else
-                    {
-                        return HNS_SGNBRD_ERROR_TOOTALL;
-                    }
-                    break;
-                }
-            }
-            fApplyBitmapToFMBoard(temp_bitmap,x,y);
-        }
-    }
-    else if(f_signboard_info.fGetType() == HNS_BRD_TRAILER_CHARACTER_BOARD)
-    {
-        if( f_boards.size() == (fGetBoardsWide() * fGetBoardsTall()) )
-        {
-            int row,column;
-            int num_characters = 0;
-            HNS_Character temp_char;
-            vector<HNS_Bitmap> characters;
-            int current_font = 0;
-            current_line = 0;
-            if(element.fGetNumLines() > fGetBoardsTall())
-            {
-                return HNS_SGNBRD_ERROR_TOOTALL;
-            }
-            else
-            {
-                for(size_t ui = 0; ui < element.fGetNumElements(); ui++)
-                {
-                    temp_element = element.fGetElement(ui);
-                    if(temp_element.fGetLineNo() != current_line)
-                    {
-                        //Add line to board
-                        if(characters.size() > fGetBoardsWide())
-                        {
-                            return HNS_SGNBRD_ERROR_TOOWIDE;
-                        }
-                        else
-                        {
-                            switch(element.fGetLineJustification())
-                            {
-                            case HNS_JUSTIFICATION_LEFT:
-                                column = 0;
-                                break;
-                            case HNS_JUSTIFICATION_LINE_CENTER:
-                                column = (fGetBoardsWide() - characters.size())/2;
-                                break;
-                            case HNS_JUSTIFICATION_FULL:
-                                column = 0;
-                                break;
-                            case HNS_JUSTIFICATION_RIGHT:
-                                column = fGetBoardsWide() - characters.size();
-                                break;
-                            }
+//                switch(element.fGetPageJustification())
+//                {
+//                case HNS_JUSTIFICATION_TOP:
+//                    if(temp_bitmap.fGetHeight() > fGetHeight())
+//                    {
+//                        return HNS_SGNBRD_ERROR_TOOTALL;
+//                    }
+//                    y = 0;
+//                    break;
+//                case HNS_JUSTIFICATION_PAGE_CENTER:
+//                    if(temp_bitmap.fGetHeight() <= fGetHeight())
+//                    {
+//                        y = (fGetHeight() - temp_bitmap.fGetHeight())/2;
+//                    }
+//                    else
+//                    {
+//                        return HNS_SGNBRD_ERROR_TOOTALL;
+//                    }
+//                    break;
+//                case HNS_JUSTIFICATION_BOTTOM:
+//                    if(temp_bitmap.fGetHeight() <= fGetHeight())
+//                    {
+//                        y = fGetHeight() - temp_bitmap.fGetHeight();
+//                    }
+//                    else
+//                    {
+//                        return HNS_SGNBRD_ERROR_TOOTALL;
+//                    }
+//                    break;
+//                }
+//            }
+//            fApplyBitmapToFMBoard(temp_bitmap,x,y);
+//        }
+//    }
+//    else if(f_signboard_info.fGetType() == HNS_BRD_TRAILER_CHARACTER_BOARD)
+//    {
+//        if( f_boards.size() == (fGetBoardsWide() * fGetBoardsTall()) )
+//        {
+//            int row,column;
+//            int num_characters = 0;
+//            HNS_Character temp_char;
+//            vector<HNS_Bitmap> characters;
+//            int current_font = 0;
+//            current_line = 0;
+//            if(element.fGetNumLines() > fGetBoardsTall())
+//            {
+//                return HNS_SGNBRD_ERROR_TOOTALL;
+//            }
+//            else
+//            {
+//                for(size_t ui = 0; ui < element.fGetNumElements(); ui++)
+//                {
+//                    temp_element = element.fGetElement(ui);
+//                    if(temp_element.fGetLineNo() != current_line)
+//                    {
+//                        //Add line to board
+//                        if(characters.size() > fGetBoardsWide())
+//                        {
+//                            return HNS_SGNBRD_ERROR_TOOWIDE;
+//                        }
+//                        else
+//                        {
+//                            switch(element.fGetLineJustification())
+//                            {
+//                            case HNS_JUSTIFICATION_LEFT:
+//                                column = 0;
+//                                break;
+//                            case HNS_JUSTIFICATION_LINE_CENTER:
+//                                column = (fGetBoardsWide() - characters.size())/2;
+//                                break;
+//                            case HNS_JUSTIFICATION_FULL:
+//                                column = 0;
+//                                break;
+//                            case HNS_JUSTIFICATION_RIGHT:
+//                                column = fGetBoardsWide() - characters.size();
+//                                break;
+//                            }
 
-                            switch(element.fGetPageJustification())
-                            {
-                            case HNS_JUSTIFICATION_TOP:
-                                row = current_line;
-                                break;
-                            case HNS_JUSTIFICATION_PAGE_CENTER:
-                                row = ((fGetBoardsTall() - element.fGetNumLines())/2) + current_line;
-                                break;
-                            case HNS_JUSTIFICATION_BOTTOM:
-                                row = (fGetBoardsTall() - element.fGetNumLines()) + current_line;
-                                break;
-                            }
-                        }
-                        fApplyLineToBoard(characters,row,column);
-                        characters.clear();
-                        current_line = temp_element.fGetLineNo();
-                    }
+//                            switch(element.fGetPageJustification())
+//                            {
+//                            case HNS_JUSTIFICATION_TOP:
+//                                row = current_line;
+//                                break;
+//                            case HNS_JUSTIFICATION_PAGE_CENTER:
+//                                row = ((fGetBoardsTall() - element.fGetNumLines())/2) + current_line;
+//                                break;
+//                            case HNS_JUSTIFICATION_BOTTOM:
+//                                row = (fGetBoardsTall() - element.fGetNumLines()) + current_line;
+//                                break;
+//                            }
+//                        }
+//                        fApplyLineToBoard(characters,row,column);
+//                        characters.clear();
+//                        current_line = temp_element.fGetLineNo();
+//                    }
 
-                    if(!temp_element.fIsGraphic())
-                    {
-                        current_font = temp_element.fGetFontNo();
-                        tempstring = temp_element.fGetText();
-                        num_characters += tempstring.size();
+//                    if(!temp_element.fIsGraphic())
+//                    {
+//                        current_font = temp_element.fGetFontNo();
+//                        tempstring = temp_element.fGetText();
+//                        num_characters += tempstring.size();
 
-                        for(size_t uj = 0; uj < tempstring.size(); uj++)
-                        {
-                            if(temp_element.fGetIsFlashing())
-                            {
-                                if(IsFlashOn(time,temp_element.fGetFlashInfo()))
-                                {
-                                    temp_char = f_fonts.at(current_font-1).fGetCharacter(tempstring[uj]);
-                                }
-                                else
-                                {
-                                    temp_char = f_fonts.at(current_font-1).fGetCharacter(0x20);
-                                }
-                            }
-                            else
-                            {
-                                temp_char = f_fonts.at(current_font-1).fGetCharacter(tempstring[uj]);
-                            }
-                            if((static_cast<size_t>(temp_char.fGetHeight()) > fGetCharacterHeight()) || (static_cast<size_t>(temp_char.fGetWidth()) > fGetCharacterWidth()))
-                            {
-                                return HNS_SGNBRD_CHAR_SIZE;
-                            }
-                            else
-                            {
-                                characters.push_back(temp_char.fGetBitmap());
-                            }
-                        }
-                    }
-                }
-                if(characters.size() > 0)
-                {
-                    if(characters.size() > fGetBoardsWide())
-                    {
-                        return HNS_SGNBRD_ERROR_TOOWIDE;
-                    }
-                    else
-                    {
-                        switch(element.fGetLineJustification())
-                        {
-                        case HNS_JUSTIFICATION_LEFT:
-                            column = 0;
-                            break;
-                        case HNS_JUSTIFICATION_LINE_CENTER:
-                            column = (fGetBoardsWide() - characters.size())/2;
-                            break;
-                        case HNS_JUSTIFICATION_FULL:
-                            column = 0;
-                            break;
-                        case HNS_JUSTIFICATION_RIGHT:
-                            column = fGetBoardsWide() - characters.size();
-                            break;
-                        }
+//                        for(size_t uj = 0; uj < tempstring.size(); uj++)
+//                        {
+//                            if(temp_element.fGetIsFlashing())
+//                            {
+//                                if(IsFlashOn(time,temp_element.fGetFlashInfo()))
+//                                {
+//                                    temp_char = f_fonts.at(current_font-1).fGetCharacter(tempstring[uj]);
+//                                }
+//                                else
+//                                {
+//                                    temp_char = f_fonts.at(current_font-1).fGetCharacter(0x20);
+//                                }
+//                            }
+//                            else
+//                            {
+//                                temp_char = f_fonts.at(current_font-1).fGetCharacter(tempstring[uj]);
+//                            }
+//                            if((static_cast<size_t>(temp_char.fGetHeight()) > fGetCharacterHeight()) || (static_cast<size_t>(temp_char.fGetWidth()) > fGetCharacterWidth()))
+//                            {
+//                                return HNS_SGNBRD_CHAR_SIZE;
+//                            }
+//                            else
+//                            {
+//                                characters.push_back(temp_char.fGetBitmap());
+//                            }
+//                        }
+//                    }
+//                }
+//                if(characters.size() > 0)
+//                {
+//                    if(characters.size() > fGetBoardsWide())
+//                    {
+//                        return HNS_SGNBRD_ERROR_TOOWIDE;
+//                    }
+//                    else
+//                    {
+//                        switch(element.fGetLineJustification())
+//                        {
+//                        case HNS_JUSTIFICATION_LEFT:
+//                            column = 0;
+//                            break;
+//                        case HNS_JUSTIFICATION_LINE_CENTER:
+//                            column = (fGetBoardsWide() - characters.size())/2;
+//                            break;
+//                        case HNS_JUSTIFICATION_FULL:
+//                            column = 0;
+//                            break;
+//                        case HNS_JUSTIFICATION_RIGHT:
+//                            column = fGetBoardsWide() - characters.size();
+//                            break;
+//                        }
 
-                        switch(element.fGetPageJustification())
-                        {
-                        case HNS_JUSTIFICATION_TOP:
-                            row = current_line;
-                            break;
-                        case HNS_JUSTIFICATION_PAGE_CENTER:
-                            row = ((fGetBoardsTall() - element.fGetNumLines())/2) + current_line;
-                            break;
-                        case HNS_JUSTIFICATION_BOTTOM:
-                            row = (fGetBoardsTall() - element.fGetNumLines()) + current_line;
-                            break;
-                        }
+//                        switch(element.fGetPageJustification())
+//                        {
+//                        case HNS_JUSTIFICATION_TOP:
+//                            row = current_line;
+//                            break;
+//                        case HNS_JUSTIFICATION_PAGE_CENTER:
+//                            row = ((fGetBoardsTall() - element.fGetNumLines())/2) + current_line;
+//                            break;
+//                        case HNS_JUSTIFICATION_BOTTOM:
+//                            row = (fGetBoardsTall() - element.fGetNumLines()) + current_line;
+//                            break;
+//                        }
 
-                        fApplyLineToBoard(characters,row,column);
-                    }
-                }
-            }
-        }
-        else
-        {
-            return HNS_SGNBRD_ERROR_SGNBRD_FORMAT;
-        }
-    }
+//                        fApplyLineToBoard(characters,row,column);
+//                    }
+//                }
+//            }
+//        }
+//        else
+//        {
+//            return HNS_SGNBRD_ERROR_SGNBRD_FORMAT;
+//        }
+//    }
 
     return HNS_SGNBRD_ERROR_NONE;
 }

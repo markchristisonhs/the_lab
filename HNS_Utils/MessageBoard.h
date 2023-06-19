@@ -39,7 +39,8 @@ typedef enum
 {
     HNS_SGNBRD_SPECIAL_NONE = 0x0,
     HNS_SGNBRD_SPECIAL_DUAL_DISPLAY = 0x1,
-    HNS_SGNBRD_SPECIAL_VSL = 0x2
+    HNS_SGNBRD_SPECIAL_VSL = 0x2,
+    HNS_SGNBRD_SPECIAL_BEACON_HACK = 0x4
 } type_hns_signboard_specials;
 
 typedef enum
@@ -210,6 +211,9 @@ public:
 
     void fSetUIMode(const int ui_mode);
     int fGetUIMode() const {return f_ui_mode;}
+
+    void fSetBeaconPort(const int &port_number) {f_beacon_port = port_number;}
+    int fGetBeaconPort() const {return f_beacon_port;}
 private:
     size_t fGetBoardHeight() const;
     size_t fGetBoardWidth() const;
@@ -234,6 +238,7 @@ private:
     std::vector< std::vector<int> > f_special_data;
 
     int f_ui_mode;
+    int f_beacon_port;
 };
 
 #include "message.h"

@@ -1,292 +1,261 @@
 #include "hns_aux_input.h"
 
+#include <QDebug>
+
 using namespace std;
 
-enum
-{
-    AUX_ACTION_NONE = -1,
-    AUX_ACTION_CANCEL = 0,
-    AUX_ACTION_RISING_EDGE = 1,
-    AUX_ACTION_FALLING_EDGE = 2
-};
-
-HNS_Aux_Input_Basic_Style::HNS_Aux_Input_Basic_Style():
+HNS_Aux_Input_Falling_Timer::HNS_Aux_Input_Falling_Timer():
     f_port_number(-1)
-  , f_val(-1)
-  , f_last_val(-1)
+  , f_duration(0)
   , f_enabled(false)
-  , f_state(-1)
-  , f_delay(0)
-  , f_time_activated(0)
+  , f_current_val(0)
+  , f_running(false)
+  , f_edge_time(0)
 {
 
 }
 
-void HNS_Aux_Input_Basic_Style::fSetEnabled(const unsigned char &enabled)
-{
-    f_enabled = (enabled != 0);
-}
-
-unsigned char HNS_Aux_Input_Basic_Style::fGetEnabled() const
-{
-    return f_enabled ? 1 : 0;
-}
-
-void HNS_Aux_Input_Basic_Style::fSetDuration(const int &duration)
-{
-    f_duration = duration;
-}
-
-int HNS_Aux_Input_Basic_Style::fGetDuration() const
-{
-    return f_duration;
-}
-
-void HNS_Aux_Input_Basic_Style::fSetMsg(const HNS_NTCIP_MessageIDCode &msg)
-{
-    f_msg = msg;
-}
-
-HNS_NTCIP_MessageIDCode HNS_Aux_Input_Basic_Style::fGetMsg() const
-{
-    return f_msg;
-}
-
-bool HNS_Aux_Input_Basic_Style::fIsAuxDisplayed(const int64_t &/*time_in*/, HNS_NTCIP_MessageIDCode &/*msg*/)
-{
-    return false;
-}
-
-int HNS_Aux_Input_Basic_Style::fSetInput(const int &/*val*/)
-{
-    return HNS_INPUT_NO_EDGE;
-}
-
-void HNS_Aux_Input_Basic_Style::fCancel()
+HNS_Aux_Input_Falling_Timer::HNS_Aux_Input_Falling_Timer(const int &port_number):
+    f_port_number(port_number)
+  , f_duration(0)
+  , f_enabled(false)
+  , f_current_val(0)
+  , f_running(false)
+  , f_edge_time(0)
 {
 
 }
 
-void HNS_Aux_Input_Basic_Style::fStateMachine(const int &/*action*/, const int64_t &/*time_in*/)
+int HNS_Aux_Input_Falling_Timer::fRecvInput(const int &val, const int64_t &time)
 {
+    int result = HNS_INPUT_NO_EDGE;
 
-}
-
-void HNS_Aux_Inputs::fAddPortNumber(const int &port_number, const size_t &aux_channel, const int &algorithm)
-{
-    bool duplicate = false;
-
-    for(size_t ui=0;ui<f_inputs.size();ui++)
+    if(f_enabled)
     {
-        if(f_inputs[ui] != nullptr)
+        if(val == 1 && f_current_val == 0)
         {
-            if(f_inputs[ui]->fGetPortNumber() == port_number)
+            f_running = true;
+            result = HNS_INPUT_RISING_EDGE;
+            f_current_val = val;
+        }
+        else if(val == 0 && f_current_val == 1)
+        {
+            f_edge_time = time;
+            qDebug() << "Falling edge detected on port" << f_port_number << ", marking edge time as" << f_edge_time;
+            result = HNS_INPUT_FALLING_EDGE;
+            f_current_val = val;
+        }
+    }
+    return result;
+}
+
+void HNS_Aux_Input_Falling_Timer::fCancel()
+{
+    f_running = false;
+    f_edge_time = 0;
+}
+
+bool HNS_Aux_Input_Falling_Timer::fIsRunning(const int64_t &time, HNS_NTCIP_MessageIDCode *result_id)
+{
+    bool result = false;
+
+    if(f_running)
+    {
+        if(f_current_val == 0)
+        {
+            int64_t duration_temp = static_cast<int64_t>(f_duration);
+            if((time - f_edge_time) > duration_temp)
             {
-                duplicate = true;
+                qDebug() << "Input port" << f_port_number << "timed out.  Duration was" << duration_temp << "edge time was" << f_edge_time << "and current time is" << time;
+                f_running = false;
+                result = false;
+            }
+            else
+            {
+                result = true;
+                if(result_id != nullptr)
+                {
+                    *result_id = f_msg_id;
+                }
+            }
+        }
+        else
+        {
+            result = true;
+            if(result_id != nullptr)
+            {
+                *result_id = f_msg_id;
+            }
+        }
+    }
+    return result;
+}
+
+void HNS_Aux_Input_Falling_Timer::fSetDuration(const int &duration)
+{
+    if(duration >= 0)
+    {
+        int duration_temp = duration * 1000;
+        if(f_duration != duration_temp)
+        {
+            f_duration = duration_temp;
+            fCancel();
+        }
+    }
+}
+
+void HNS_Aux_Input_Falling_Timer::fSetEnabled(const bool &enabled)
+{
+    f_enabled = enabled;
+    if(!enabled)
+    {
+        fCancel();
+    }
+}
+
+void HNS_Aux_Input_Falling_Timer::fSetMessage(const HNS_NTCIP_MessageIDCode &msg_code)
+{
+    if(f_msg_id != msg_code)
+    {
+        f_msg_id = msg_code;
+        fCancel();
+    }
+}
+
+HNS_Aux_Inputs_PennStyle::HNS_Aux_Inputs_PennStyle():
+    f_input_channels(4,nullptr)
+{
+
+}
+
+HNS_Aux_Inputs_PennStyle::HNS_Aux_Inputs_PennStyle(const std::vector<int> &port_numbers, const int &algorithm):
+    f_input_channels(port_numbers.size(),nullptr)
+{
+    if(algorithm == HNS_INPUT_STYLE_FALLING_TIMER)
+    {
+        for(size_t ui=0;ui<f_input_channels.size();ui++)
+        {
+            f_input_channels[ui] = (HNS_Aux_Input *) new HNS_Aux_Input_Falling_Timer(port_numbers[ui]);
+        }
+    }
+}
+
+void HNS_Aux_Inputs_PennStyle::fRecvInput(const int &val, const int64_t &time, const int &port_number, const HNS_NTCIP_MessageActivationCode &running_code)
+{
+    int result_edge = HNS_INPUT_NO_EDGE;
+    HNS_Aux_Input *channel_to_add = nullptr;
+    for(size_t ui=0;ui<f_input_channels.size();ui++)
+    {
+        if(f_input_channels[ui] != nullptr)
+        {
+            if(f_input_channels[ui]->fGetPortNumber() == port_number)
+            {
+                result_edge = f_input_channels[ui]->fRecvInput(val,time);
+                channel_to_add = f_input_channels[ui];
                 break;
             }
         }
     }
-
-    if(!duplicate)
+    if(channel_to_add != nullptr && result_edge == HNS_INPUT_RISING_EDGE)
     {
-        if(aux_channel >= f_inputs.size())
+        qDebug() << "Rising edge found";
+        bool port_found = false;
+        for(size_t ui=0;ui<f_running_queue.size();ui++)
         {
-            f_inputs.resize(aux_channel+1,nullptr);
-        }
-
-        if(algorithm == HNS_INPUT_STYLE_DEFAULT)
-        {
-            f_inputs[aux_channel] = (HNS_Aux_Input *)(new HNS_Aux_Input_Basic_Style(port_number));
-        }
-    }
-}
-
-void HNS_Aux_Inputs::fSetEnables(const vector<unsigned char> &enables)
-{
-    size_t ui_limit = min(enables.size(),f_inputs.size());
-
-    for(size_t ui=0;ui<ui_limit;ui++)
-    {
-        fSetEnabled(enables[ui],ui);
-    }
-}
-
-void HNS_Aux_Inputs::fSetEnabled(const unsigned char &enabled, const size_t &aux_channel)
-{
-    if(aux_channel < f_inputs.size())
-    {
-        if(f_inputs[aux_channel] != nullptr)
-        {
-            f_inputs[aux_channel]->fSetEnabled(enabled);
-        }
-    }
-}
-
-unsigned char HNS_Aux_Inputs::fGetEnabled(const size_t &aux_channel) const
-{
-    unsigned char result = 0;
-    if(aux_channel < f_inputs.size())
-    {
-        if(f_inputs[aux_channel] != nullptr)
-        {
-            result = f_inputs[aux_channel]->fGetEnabled();
-        }
-    }
-    return result;
-}
-
-vector<unsigned char> HNS_Aux_Inputs::fGetEnables() const
-{
-    vector<unsigned char> result(f_inputs.size(),0);
-    for(size_t ui=0;ui<result.size();ui++)
-    {
-        result[ui] = fGetEnabled(ui);
-    }
-    return result;
-}
-
-void HNS_Aux_Inputs::fSetDurations(const vector<int> durations)
-{
-    size_t ui_limit = min(durations.size(),f_inputs.size());
-
-    for(size_t ui=0;ui<ui_limit;ui++)
-    {
-        fSetDuration(durations[ui],ui);
-    }
-}
-
-void HNS_Aux_Inputs::fSetDuration(const int &duration, const size_t &aux_channel)
-{
-    if(aux_channel < f_inputs.size())
-    {
-        if(f_inputs[aux_channel] != nullptr)
-        {
-            f_inputs[aux_channel]->fSetDuration(duration);
-        }
-    }
-}
-
-int HNS_Aux_Inputs::fGetDuration(const size_t &aux_channel) const
-{
-    int result = 0;
-    if(aux_channel < f_inputs.size())
-    {
-        if(f_inputs[aux_channel] != nullptr)
-        {
-            result = f_inputs[aux_channel]->fGetDuration();
-        }
-    }
-    return result;
-}
-
-vector<int> HNS_Aux_Inputs::fGetDurations() const
-{
-    vector<int> result(f_inputs.size(),0);
-    for(size_t ui=0;ui<result.size();ui++)
-    {
-        result[ui] = fGetDuration(ui);
-    }
-    return result;
-}
-
-void HNS_Aux_Inputs::fSetMsgs(const std::vector<HNS_NTCIP_MessageIDCode> &msgs)
-{
-    size_t ui_limit = min(msgs.size(),f_inputs.size());
-
-    for(size_t ui=0;ui<ui_limit;ui++)
-    {
-        fSetMsg(msgs[ui],ui);
-    }
-}
-
-void HNS_Aux_Inputs::fSetMsg(const HNS_NTCIP_MessageIDCode &msg, const size_t &aux_channel)
-{
-    if(aux_channel < f_inputs.size())
-    {
-        if(f_inputs[aux_channel] != nullptr)
-        {
-            f_inputs[aux_channel]->fSetMsg(msg);
-        }
-    }
-}
-
-HNS_NTCIP_MessageIDCode HNS_Aux_Inputs::fGetMsg(const size_t &aux_channel) const
-{
-    HNS_NTCIP_MessageIDCode result;
-    if(aux_channel < f_inputs.size())
-    {
-        if(f_inputs[aux_channel] != nullptr)
-        {
-            result = f_inputs[aux_channel]->fGetMsg();
-        }
-    }
-    return result;
-}
-
-vector<HNS_NTCIP_MessageIDCode> HNS_Aux_Inputs::fGetMsgs() const
-{
-    vector<HNS_NTCIP_MessageIDCode> result(f_inputs.size(),HNS_NTCIP_MessageIDCode());
-    for(size_t ui=0;ui<result.size();ui++)
-    {
-        result[ui] = fGetMsg(ui);
-    }
-    return result;
-}
-
-int HNS_Aux_Inputs::fGetStyle(const size_t &aux_channel)
-{
-    int result = HNS_INPUT_STYLE_NONE;
-    if(aux_channel < f_inputs.size())
-    {
-        if(f_inputs[aux_channel] != nullptr)
-        {
-            result = f_inputs[aux_channel]->fGetStyle();
-        }
-    }
-    return result;
-}
-
-bool HNS_Aux_Inputs::fIsAuxDisplayed(const int64_t &time_in, HNS_NTCIP_MessageActivationCode *msg, bool *turn_on_off)
-{
-    return false;
-}
-
-void HNS_Aux_Inputs::fSetInput(const int &val, const int &port_number, const HNS_NTCIP_MessageActivationCode &return_msg)
-{
-    //This really won't work for multiple inputs, but for now I just want to get a single input working.
-    for(size_t ui=0;ui<=f_inputs.size();ui++)
-    {
-        if(f_inputs[ui] != nullptr)
-        {
-            if(f_inputs[ui]->fGetPortNumber() == port_number)
+            if(f_running_queue[ui] != nullptr)
             {
-                f_inputs[ui]->fSetInput(val);
-                break;
+                if(f_running_queue[ui]->fGetPortNumber() == port_number)
+                {
+                    port_found = true;
+                    break;
+                }
             }
         }
-    }
-}
 
-void HNS_Aux_Inputs::fCancel()
-{
-    for(size_t ui=0;ui<f_inputs.size();ui++)
-    {
-        if(f_inputs[ui] != nullptr)
+        if(!port_found)
         {
-            f_inputs[ui]->fCancel();
+            qDebug() << "Adding input to queue";
+            if(f_running_queue.size() == 0)
+            {
+                f_ret_code = running_code;
+            }
+            f_running_queue.push_back(channel_to_add);
         }
     }
 }
 
-HNS_Aux_Inputs::~HNS_Aux_Inputs()
+void HNS_Aux_Inputs_PennStyle::fCancel()
 {
-    for(size_t ui=0;ui<f_inputs.size();ui++)
+    for(size_t ui=0;ui<f_input_channels.size();ui++)
     {
-        if(f_inputs[ui] != nullptr)
+        if(f_input_channels[ui] != nullptr)
         {
-            delete f_inputs[ui];
-            f_inputs[ui] = nullptr;
+            f_input_channels[ui]->fCancel();
+        }
+    }
+}
+
+bool HNS_Aux_Inputs_PennStyle::fIsRunning(const int64_t &time, HNS_NTCIP_MessageActivationCode *result_code, int &action)
+{
+    bool result = false;
+    HNS_NTCIP_MessageIDCode temp_id;
+    static HNS_Aux_Input *last_running_input = nullptr;
+
+    while(f_running_queue.size() > 0)
+    {
+        if(f_running_queue.front() != nullptr)
+        {
+            if(f_running_queue.front()->fIsRunning(time,&temp_id))
+            {
+                if(result_code != nullptr)
+                {
+                    result_code->fSetMemoryType(temp_id.fGetMemoryType());
+                    result_code->fSetMessageNo(temp_id.fGetMessageNumber());
+                    result_code->fSetCRC(temp_id.fGetCRCAsInt());
+                    result_code->fSetPriority(127);
+                    result_code->fSetDuration(0xFFFF);
+                    result_code->fSetSrcAddr("127.0.0.1");
+                }
+                if(last_running_input != f_running_queue.front())
+                {
+                    last_running_input = f_running_queue.front();
+                    action = HNS_AUX_ACTION_START;
+                }
+                return true;
+            }
+            else
+            {
+                f_running_queue.pop_back();
+            }
+        }
+        else
+        {
+            f_running_queue.pop_back();
+        }
+    }
+
+    *result_code = f_ret_code;
+    if(last_running_input != nullptr)
+    {
+        action = HNS_AUX_ACTION_STOP;
+    }
+    else
+    {
+        action = HNS_AUX_ACTION_NONE;
+    }
+    last_running_input = nullptr;
+    return result;
+}
+
+void HNS_Aux_Inputs_PennStyle::fSetInput(const int &aux_channel, const HNS_NTCIP_MessageIDCode &msg_id, const bool &enabled, const int &duration)
+{
+    if(aux_channel >= 0 && static_cast<size_t>(aux_channel) < f_input_channels.size())
+    {
+        if(f_input_channels[aux_channel] != nullptr)
+        {
+            f_input_channels[aux_channel]->fSetDuration(duration);
+            f_input_channels[aux_channel]->fSetEnabled(enabled);
+            f_input_channels[aux_channel]->fSetMessage(msg_id);
         }
     }
 }

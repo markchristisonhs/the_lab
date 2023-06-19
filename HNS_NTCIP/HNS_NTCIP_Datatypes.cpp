@@ -135,6 +135,36 @@ uint16_t HNS_NTCIP_MessageIDCode::fGetCRCAsInt() const
     return result;
 }
 
+bool HNS_NTCIP_MessageIDCode::operator==(const HNS_NTCIP_MessageIDCode &rhs)
+{
+    if(f_memorytype != rhs.f_memorytype)
+    {
+        return false;
+    }
+    if(f_messagenumber != rhs.f_messagenumber)
+    {
+        return false;
+    }
+    if(f_crc.size() != rhs.f_crc.size())
+    {
+        return false;
+    }
+    for(size_t ui=0;ui<f_crc.size();ui++)
+    {
+        if(f_crc[ui] != rhs.f_crc[ui])
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool HNS_NTCIP_MessageIDCode::operator!=(const HNS_NTCIP_MessageIDCode &rhs)
+{
+    return !(*this == rhs);
+}
+
 HNS_NTCIP_MessageActivationCode::HNS_NTCIP_MessageActivationCode():
     f_duration(0xFFFF)
   , f_priority(1)
@@ -419,6 +449,54 @@ std::vector<uint8_t> HNS_NTCIP_MessageActivationCode::fGetSrcAddrAsVec() const
 std::string HNS_NTCIP_MessageActivationCode::fGetSrcAddrAsString() const
 {
     return HNS_IP_Settings::fIPByteArraytoString(f_src_address);
+}
+
+bool HNS_NTCIP_MessageActivationCode::operator==(const HNS_NTCIP_MessageActivationCode &rhs)
+{
+    if(f_duration != rhs.f_duration)
+    {
+        return false;
+    }
+    if(f_memory_type != rhs.f_memory_type)
+    {
+        return false;
+    }
+    if(f_message_no != rhs.f_message_no)
+    {
+        return false;
+    }
+    if(f_priority != rhs.f_priority)
+    {
+        return false;
+    }
+    if(f_crc.size() != rhs.f_crc.size())
+    {
+        return false;
+    }
+    for(size_t ui=0;ui<f_crc.size();ui++)
+    {
+        if(f_crc[ui] != rhs.f_crc[ui])
+        {
+            return false;
+        }
+    }
+    if(f_src_address.size() != rhs.f_src_address.size())
+    {
+        return false;
+    }
+    for(size_t ui=0;ui<f_src_address.size();ui++)
+    {
+        if(f_src_address[ui] != rhs.f_src_address[ui])
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool HNS_NTCIP_MessageActivationCode::operator!=(const HNS_NTCIP_MessageActivationCode &rhs)
+{
+    return !(*this == rhs);
 }
 
 HNS_NTCIP_OID::HNS_NTCIP_OID()
