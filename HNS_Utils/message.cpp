@@ -270,6 +270,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
     }
 
     f_pages.clear();
+    fResetDefaults();
 
     //there will always be one page, even if its blank
     fAddPage();
@@ -584,7 +585,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                         }
                                         if(f_current_flash_info.fGetFlashOff() > 0 && f_current_flash_info.fGetFlashOn() > 0)
                                         {
-                                            f_current_flashing_state = false;
+                                            f_current_flashing_state = true;
                                         }
                                         fsm_state = HNS_MULTI_PARSER_STATE_TEXT;
                                     }
@@ -1467,6 +1468,11 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                                         }
                                     }
                                 }
+                                else
+                                {
+                                    fAddNewLineToPage();
+                                    fsm_state = HNS_MULTI_PARSER_STATE_TEXT;
+                                }
                             }
                             else
                             {
@@ -1588,6 +1594,7 @@ int HNS_Message2::fSetMULTI(std::string &multi_string, const std::vector<HNS_Fon
                             {
                                 f_current_page_time_on = f_default_page_time_on;
                                 f_current_page_time_off = f_default_page_time_off;
+                                fsm_state = HNS_MULTI_PARSER_STATE_TEXT;
                             }
                             else if(numbers.size() == 1)
                             {
@@ -1991,6 +1998,14 @@ type_hns_signboard_error HNS_Message2::fAddGraphicToPage(const HNS_Graphical_Ele
     return error;
 }
 
+void HNS_Message2::fAddNewLineToPage()
+{
+    if(f_pages.size() > 0)
+    {
+        f_pages[f_pages.size()-1].fAddNewline();
+    }
+}
+
 size_t HNS_Message2::fGetNumPages() const
 {
     return f_pages.size();
@@ -2337,6 +2352,19 @@ unsigned int HNS_Message2::fGetMessagePeriod() const
     return result;
 }
 
+void HNS_Message2::fResetDefaults()
+{
+    f_current_page_time_on = f_default_page_time_on;
+    f_current_page_time_off = f_default_page_time_off;
+    f_current_line_justification = f_default_line_justification;
+    f_current_page_justification = f_default_page_justification;
+    f_current_font = f_default_font;
+    f_current_line_spacing = 1;
+    f_current_char_spacing = 1;
+    f_current_flash_info = HNS_Flashing_Text(f_default_flash_time_on,f_default_flash_time_off,true);
+    f_current_flashing_state = false;
+}
+
 void HNS_Message2::fResetMulti()
 {
 }
@@ -2459,9 +2487,21 @@ size_t HNS_Message_Page2::fGetNumElements() const
 
 void HNS_Message_Page2::fAddNewline()
 {
-    if(f_elements.size() > 0)
+    if(f_page_elements.size() > 0)
     {
-        //f_elements[f_elements.size()-1].
+        if(f_page_elements.size() > 0)
+        {
+            //New page justification, add a new block
+            if(f_parent_message->fGetCurrentPageJustification() != f_page_elements[f_page_elements.size()-1].fGetPageJustification())
+            {
+                f_page_elements.push_back(HNS_Message_Page_Justified_Element(f_parent_message));
+            }
+        }
+        else
+        {
+            f_page_elements.push_back(HNS_Message_Page_Justified_Element(f_parent_message));
+        }
+        f_page_elements[f_page_elements.size()-1].fAddNewLine();
     }
 }
 
@@ -2603,7 +2643,7 @@ HNS_Bitmap HNS_Graphical_Element::fGetBitmap(const std::vector<HNS_Graphic> *gra
 
     if(f_parent_message != nullptr)
     {
-        if(IsFlashOn(time,f_parent_message->fGetCurrentFlashingInfo()))
+        if(!f_is_flashing || IsFlashOn(time,f_parent_message->fGetCurrentFlashingInfo()))
         {
             for(size_t i = 0;i<graphics->size();i++)
             {
@@ -2622,7 +2662,6 @@ HNS_Bitmap HNS_Graphical_Element::fGetBitmap(const std::vector<HNS_Graphic> *gra
 HNS_Message_Page_Justified_Element::HNS_Message_Page_Justified_Element(const HNS_Message2 *parent):
     f_page_justification(HNS_JUSTIFICATION_PAGE_CENTER)
   , f_parent_message(parent)
-  , f_line_no(0)
 {
     if(f_parent_message != nullptr)
     {
@@ -2640,8 +2679,9 @@ void HNS_Message_Page_Justified_Element::fAddElement(const HNS_Message_Element2 
             int lines = 0;
             for(size_t ui=0;ui<f_elements.size();ui++)
             {
-                lines += f_elements[f_elements.size()-1].fGetNumLines();
+                lines += f_elements[ui].fGetNumLines();
             }
+            lines -= 1;
             f_elements.push_back(HNS_Message_Justified_Element(f_parent_message,lines));
         }
     }
@@ -2650,6 +2690,31 @@ void HNS_Message_Page_Justified_Element::fAddElement(const HNS_Message_Element2 
         f_elements.push_back(HNS_Message_Justified_Element(f_parent_message,0));
     }
     f_elements[f_elements.size()-1].fAddElement(element,newline);
+}
+
+void HNS_Message_Page_Justified_Element::fAddNewLine()
+{
+    if(f_elements.size() > 0)
+    {
+        if(f_parent_message->fGetCurrentLineJustification() != f_elements[f_elements.size()-1].fGetLineJustification())
+        {
+            int lines = 0;
+            for(size_t ui=0;ui<f_elements.size();ui++)
+            {
+                lines += f_elements[f_elements.size()-1].fGetNumLines();
+            }
+            f_elements.push_back(HNS_Message_Justified_Element(f_parent_message,lines));
+        }
+        else
+        {
+            f_elements[f_elements.size()-1].fAddNewLine();
+        }
+    }
+    else
+    {
+        f_elements.push_back(HNS_Message_Justified_Element(f_parent_message,0));
+        f_elements[f_elements.size()-1].fAddNewLine();
+    }
 }
 
 HNS_Message_Justified_Element HNS_Message_Page_Justified_Element::fGetElement(const size_t &index) const
@@ -2663,27 +2728,6 @@ HNS_Message_Justified_Element HNS_Message_Page_Justified_Element::fGetElement(co
 
     return result;
 }
-
-//void HNS_Message_Page_Justified_Element::fAddText(const std::string &text, const bool &newline)
-//{
-//    if(f_parent_message != nullptr)
-//    {
-//        size_t dummy = f_elements.size();
-//        bool test = f_elements.empty();
-//        if(f_elements.size() > 0)
-//        {
-//            if(f_elements[f_elements.size()-1].fGetLineJustification() != f_parent_message->fGetCurrentLineJustification())
-//            {
-//                f_elements.push_back(HNS_Message_Justified_Element(f_parent_message));
-//            }
-//        }
-//        else
-//        {
-//            f_elements.push_back(HNS_Message_Justified_Element(f_parent_message));
-//        }
-//        f_elements[f_elements.size()-1].fAddText(text,newline);
-//    }
-//}
 
 HNS_Bitmap HNS_Message_Page_Justified_Element::fGetBitmap(const std::vector<HNS_Font> *fonts, const int64_t &time, const HNS_SignBoard *signboard, type_hns_signboard_error *error, const bool &preview_mode) const
 {
@@ -2707,9 +2751,17 @@ HNS_Bitmap HNS_Message_Page_Justified_Element::fGetBitmap(const std::vector<HNS_
     for(size_t ui=0;ui<f_elements.size();ui++)
     {
         height += f_elements[ui].fGetHeight();
-        if(ui < f_elements.size() - 1)
+        if((ui < (f_elements.size() - 1)) && (f_elements.size() > 1))
         {
             height += f_elements[ui].fGetLastLineSpacing();
+        }
+        if(ui >= 1)
+        {
+            //account for overlapping lines
+            if(f_elements[ui].fGetFirstLineNo() == f_elements[ui-1].fGetLastLineNo())
+            {
+                height = height - f_elements[ui].fGetFirstLineHeight();
+            }
         }
     }
 
@@ -2718,6 +2770,13 @@ HNS_Bitmap HNS_Message_Page_Justified_Element::fGetBitmap(const std::vector<HNS_
     for(size_t ui=0;ui<f_elements.size();ui++)
     {
         temp_bitmap = f_elements[ui].fGetBitmap(fonts,time,preview_mode);
+        if(ui >= 1)
+        {
+            if(f_elements[ui].fGetFirstLineNo() != f_elements[ui-1].fGetLastLineNo())
+            {
+                y += f_elements[ui-1].fGetHeight() + f_elements[ui-1].fGetLastLineSpacing();
+            }
+        }
         switch(f_elements[ui].fGetLineJustification())
         {
         case HNS_JUSTIFICATION_LEFT:
@@ -2751,8 +2810,6 @@ HNS_Bitmap HNS_Message_Page_Justified_Element::fGetBitmap(const std::vector<HNS_
         }
         result.fCopy(temp_bitmap,x,y);
 
-        y += f_elements[ui].fGetHeight() + f_elements[ui].fGetLastLineSpacing();
-
         if(temp_error != HNS_SGNBRD_ERROR_NONE)
         {
             break;
@@ -2765,7 +2822,7 @@ HNS_Bitmap HNS_Message_Page_Justified_Element::fGetBitmap(const std::vector<HNS_
 
 type_justification_page HNS_Message_Page_Justified_Element::fGetPageJustification() const
 {
-    return HNS_JUSTIFICATION_PAGE_CENTER;
+    return f_page_justification;
 }
 
 size_t HNS_Message_Page_Justified_Element::fGetNumLines() const
@@ -2793,13 +2850,26 @@ HNS_Message_Justified_Element::HNS_Message_Justified_Element(const HNS_Message2 
 
 void HNS_Message_Justified_Element::fAddElement(HNS_Message_Element2 element, const bool &newline)
 {
-    element.fSetLineNo(f_temp_line_no);
-    f_elements.push_back(element);
-    size_t new_line_spacing;
-    if(newline)
+    if(f_parent_message != nullptr)
     {
-        new_line_spacing = f_parent_message->fGetCurrentLineSpacing();
+        element.fSetLineNo(f_temp_line_no);
+        f_elements.push_back(element);
+        size_t new_line_spacing;
+        if(newline)
+        {
+            new_line_spacing = f_parent_message->fGetCurrentLineSpacing();
 
+            f_line_spacing.push_back(new_line_spacing);
+            f_temp_line_no++;
+        }
+    }
+}
+
+void HNS_Message_Justified_Element::fAddNewLine()
+{
+    if(f_parent_message != nullptr)
+    {
+        size_t new_line_spacing = f_parent_message->fGetCurrentLineSpacing();
         f_line_spacing.push_back(new_line_spacing);
         f_temp_line_no++;
     }
@@ -3169,6 +3239,33 @@ size_t HNS_Message_Justified_Element::fGetLastLineSpacing() const
     }
 
     return result;
+}
+
+size_t HNS_Message_Justified_Element::fGetFirstLineNo() const
+{
+    if(f_elements.size() > 0)
+    {
+        return f_elements[0].fGetLineNo();
+    }
+    return 0;
+}
+
+size_t HNS_Message_Justified_Element::fGetLastLineNo() const
+{
+    if(f_elements.size() > 0)
+    {
+        return f_elements[f_elements.size()-1].fGetLineNo();
+    }
+    return 0;
+}
+
+size_t HNS_Message_Justified_Element::fGetFirstLineHeight() const
+{
+    if(f_elements.size() > 0)
+    {
+        return f_elements[0].fGetHeight();
+    }
+    return 0;
 }
 
 vector<int> HNS_Message_Justified_Element::fGetFontsUsed()

@@ -180,9 +180,11 @@ private:
     void fAddPage();
     type_hns_signboard_error fAddElementToPage(HNS_Message_Element2 &element, const bool &newline = false);
     type_hns_signboard_error fAddGraphicToPage(const HNS_Graphical_Element &graphic);
+    void fAddNewLineToPage();
     void fResetMulti();
     size_t fGetPageIndexFromTime(const int64_t &time, unsigned int &time_in_page);
     unsigned int fGetMessagePeriod() const;
+    void fResetDefaults();
     std::vector<HNS_Message_Page2> f_pages;
 
     static type_justification_line f_default_line_justification;
@@ -283,7 +285,7 @@ public:
     HNS_Message_Page_Justified_Element(const HNS_Message2 *parent);
 
     void fAddElement(const HNS_Message_Element2 &element, const bool &newline = false);
-//    void fAddText(const std::string &text, const bool &newline = false);
+    void fAddNewLine();
     size_t fGetNumElements() const {return f_elements.size();}
     HNS_Message_Justified_Element fGetElement(const size_t &index) const;
 
@@ -299,8 +301,6 @@ private:
     type_justification_page f_page_justification;
 
     const HNS_Message2 *f_parent_message;
-
-    int f_line_no;
 };
 
 //This represents a text element on a single line with a single line justification
@@ -310,6 +310,7 @@ public:
     HNS_Message_Justified_Element(const HNS_Message2 *parent, const int &starting_line);
 
     void fAddElement(HNS_Message_Element2 element, const bool &newline = false);
+    void fAddNewLine();
     size_t fGetNumElements() const;
     HNS_Message_Element2 fGetElement(const size_t &index) const;
     void fChangeJustification(const type_justification_line &line_justification, const type_justification_page &page_justification);
@@ -324,6 +325,9 @@ public:
     size_t fGetHeight() const;
     size_t fGetNumLines() const;
     size_t fGetLastLineSpacing() const;
+    size_t fGetFirstLineNo() const;
+    size_t fGetLastLineNo() const;
+    size_t fGetFirstLineHeight() const;
 
     //Returns the fonts used in this element
     std::vector<int> fGetFontsUsed();
